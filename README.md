@@ -1,4 +1,22 @@
 # CS118 Project 2
+Group Members and UCLA IDs: Roy Lin(UCLA ID: 704-767-891)<br>
+
+## Contributions of Each Team Member
+
+## High Level Design of Server
+
+## High Level Design of Client
+
+## Problems We Ran Into
+
+## List of Additional Libraries Used
+
+## Online Tutorials or Code Examples
+Code Examples:
+- 
+
+Online Tutorials:
+-
 
 ## Makefile
 
@@ -30,11 +48,3 @@ path to the `tcp.lua` script:
 To dissect tcpdump-recorded file, you can use `-r <pcapfile>` option. For example:
 
     wireshark -X lua_script:./confundo.lua -r confundo.pcap
-
-## TODO
-
-    ###########################################################
-    ##                                                       ##
-    ## REPLACE CONTENT OF THIS FILE WITH YOUR PROJECT REPORT ##
-    ##                                                       ##
-    ###########################################################
