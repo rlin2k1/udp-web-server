@@ -14,8 +14,6 @@
 #include <netdb.h>
 #include "header.hpp"
 
-#define PACKETSIZE 524
-#define PAYLOADSIZE 512
 
 int main(int argc,char* argv[]){
 	if (argc != 4){
@@ -60,8 +58,56 @@ int main(int argc,char* argv[]){
 	memset(&payload, '\0', sizeof(payload));
 	int bytesRead; 
 
+	//Create syn packet
+	unsigned char sendSyn[PACKETSIZE] = {};
+	unsigned char* syn = createSyn();
+	memcpy(sendSyn,  syn, PACKETSIZE);
 	
-	//Send file
+	//Attempt to send syn packet until receive ACK
+	bool hasReceived = true;
+	//if timer < timeout -> check for ACK
+	// if timeout -> resend SYN
+	clock_t begin;
+	clock_t now;
+	begin = clock();
+	
+	while(1){	
+		if (sendto(sockfd, sendSyn, HEADERSIZE, 0, (struct sockaddr *)&serveraddr, sizeof(serveraddr)) < 0) {
+			perror("sendto failed");
+			return 0;
+		}
+
+		//remaddr is addr of another remote server
+		struct sockaddr_in remaddr; 
+		socklen_t addrlen = sizeof(remaddr);
+		unsigned char buf[PACKETSIZE];
+		
+		//Check for SYN|ACK from server
+		bytesRead= recvfrom(sockfd, buf, PACKETSIZE, 0, (struct sockaddr *)&remaddr, &addrlen);
+		if (bytesRead > 0) {
+			printf("received message: \"%s\"\n", buf);
+			
+			//Create ack packet
+			unsigned char sendAck[PACKETSIZE] = {};
+			unsigned char* ack = createAck(1, 2, 3);
+			memcpy(sendAck,  ack,  PACKETSIZE);
+			
+			//Respond with Ack
+			if (sendto(sockfd, sendAck, HEADERSIZE, 0, (struct sockaddr *)&serveraddr, sizeof(serveraddr)) < 0) {
+				perror("sendto failed");
+				return 0;
+			}
+			
+			break;
+		}
+		
+
+	}
+	
+	//Respond with ACK 
+	
+	/*
+	//Begin transmission of file
 	while((bytesRead = fread(payload, sizeof(char), PAYLOADSIZE, fp)) > 0){
 		std::cout << "HERE IS PAYLOAD CLIENT: " << payload  << bytesRead <<  "\n";
 		
@@ -81,18 +127,7 @@ int main(int argc,char* argv[]){
 			return 0;
 		}
 	}
-	
-	//TEST ZONE
-	/*
-	//Send file
-	while((bytesRead = fread(buf, sizeof(char), BUFFERSIZE, fp)) > 0){
-		if (sendto(sockfd, buf, strlen(buf), 0, (struct sockaddr *)&serveraddr, sizeof(serveraddr)) < 0) {
-			perror("sendto failed");
-			return 0;
-		}
-	}
 	*/
-	
 	close(sockfd);
 	return 0;
 }

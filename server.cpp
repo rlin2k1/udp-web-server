@@ -197,13 +197,42 @@ int main(int argc,char* argv[]){
 	int bytesRead = -1;
 	printf("Listening on localhost at port: %d\n", port);
 	while(1) {
+		memset(buf, '\0', sizeof(buf));
+		bytesRead= recvfrom(sockfd, buf, PACKETSIZE, 0, (struct sockaddr *)&remaddr, &addrlen);
+		if (bytesRead > 0) {
+			printf("received message: \"%s\"\nsize=%d\n", buf, bytesRead);
+			packet pack(buf, PACKETSIZE);
+			printf("\n");
+			//Create new connection
+			if (pack.getSynFlag()){
+				//save state
+				
+				//Respond:
+				//Create ack packet
+				unsigned char sendSynAck[PACKETSIZE] = {};
+				unsigned char* synAck = createSynAck( num_conn);
+				memcpy(sendSynAck,  synAck,  PACKETSIZE);
+				
+				//Respond withSynAck
+				if (sendto(sockfd, sendSynAck, HEADERSIZE, 0, (struct sockaddr *)&remaddr, addrlen) < 0) {
+					perror("sendto failed");
+					return 0;
+				}
+				num_conn++;
+			}
+			else{ //Handle by saving into file
+				
+			}
+		}
+		/*
 		memset(buf, '\0', sizeof(buf));	
 		bytesRead= recvfrom(sockfd, buf, PACKETSIZE, 0, (struct sockaddr *)&remaddr, &addrlen);
 		if (bytesRead > 0) {
-			printf("received message: \"%s\"\n", buf);
+			printf("received message: \"%s\"\nsize=%d\n", buf, bytesRead);
 			packet pack(buf, PACKETSIZE);
-			printf("^");
+			printf("\n");
 		}
+		*/
 	}
 	
 	return 0;
