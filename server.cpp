@@ -19,7 +19,10 @@
 #include <signal.h>
 #include <sys/stat.h>
 
-#define BUFFERSIZE 1024
+#include "header.hpp" 
+
+#define PACKETSIZE 524
+#define PAYLOADSIZE 512
 #define max_clients 20
 
 //Global variables to close gracefully during signal
@@ -36,6 +39,23 @@ void signalHandler(int sigNum){
 	}
 }
 
+/*
+// UDP Download
+int download(int clientSockfd, std::string filepath){
+	int fd = open(filepath.c_str(), O_WRONLY|O_CREAT|O_TRUNC, 0644);
+    if (fd == -1){
+       std::cerr << "ERROR: Failed to open file\n";
+       return 1;
+    }
+	char buf[PACKETSIZE] = { 0 };
+	int res = 0;
+	int bytesRead = -1;
+	fd_set readfds2;
+	struct timeval timer = {15, 0};	
+	
+}
+*/
+
 // Saves file from client socket to specified directory
 int download(int clientSockfd, std::string filepath){
 	int fd = open(filepath.c_str(), O_WRONLY|O_CREAT|O_TRUNC, 0644);
@@ -43,7 +63,7 @@ int download(int clientSockfd, std::string filepath){
        std::cerr << "ERROR: Failed to open file\n";
        return 1;
     }
-	char buf[BUFFERSIZE] = { 0 };
+	char buf[PACKETSIZE] = { 0 };
 	int res = 0;
 	int bytesRead = -1;
 	fd_set readfds2;
@@ -60,7 +80,7 @@ int download(int clientSockfd, std::string filepath){
 		// If there was any res, read from the buffer
 		else if (res > 0){
 			if (FD_ISSET(clientSockfd, &readfds2)) {
-				bytesRead = recv(clientSockfd, buf, BUFFERSIZE, 0);
+				bytesRead = recv(clientSockfd, buf, PACKETSIZE, 0);
 				if (bytesRead < 0) {
 					std::cerr << "ERROR: recv failed";
 					close(fd);
@@ -90,7 +110,7 @@ int download(int clientSockfd, std::string filepath){
 			   std::cerr << "ERROR: Failed to open file\n";
 			   return 1;
 			}
-			char buf2[BUFFERSIZE] = "ERROR";
+			char buf2[PACKETSIZE] = "ERROR";
 			if (write(fd, &buf2[0], 5) < 0) {
 				std::cerr << "Failed to write to log file2\n";
 				close(fd);
@@ -173,15 +193,46 @@ int main(int argc,char* argv[]){
 	struct sockaddr_in remaddr; 
 	socklen_t addrlen = sizeof(remaddr);
 		
-	char buf[BUFFERSIZE] = { 0 };
+	unsigned char buf[PACKETSIZE] = { 0 };
 	int bytesRead = -1;
 	printf("Listening on localhost at port: %d\n", port);
 	while(1) {
-		memset(buf, '\0', sizeof(buf));	
-		bytesRead= recvfrom(sockfd, buf, BUFFERSIZE, 0, (struct sockaddr *)&remaddr, &addrlen);
+		memset(buf, '\0', sizeof(buf));
+		bytesRead= recvfrom(sockfd, buf, PACKETSIZE, 0, (struct sockaddr *)&remaddr, &addrlen);
 		if (bytesRead > 0) {
-			printf("received message: \"%s\"\n", buf);
+			printf("received message: \"%s\"\nsize=%d\n", buf, bytesRead);
+			packet pack(buf, PACKETSIZE);
+			printf("\n");
+			//Create new connection
+			if (pack.getSynFlag()){
+				//save state
+				
+				//Respond:
+				//Create ack packet
+				unsigned char sendSynAck[PACKETSIZE] = {};
+				unsigned char* synAck = createSynAck( num_conn);
+				memcpy(sendSynAck,  synAck,  PACKETSIZE);
+				
+				//Respond withSynAck
+				if (sendto(sockfd, sendSynAck, HEADERSIZE, 0, (struct sockaddr *)&remaddr, addrlen) < 0) {
+					perror("sendto failed");
+					return 0;
+				}
+				num_conn++;
+			}
+			else{ //Handle by saving into file
+				
+			}
 		}
+		/*
+		memset(buf, '\0', sizeof(buf));	
+		bytesRead= recvfrom(sockfd, buf, PACKETSIZE, 0, (struct sockaddr *)&remaddr, &addrlen);
+		if (bytesRead > 0) {
+			printf("received message: \"%s\"\nsize=%d\n", buf, bytesRead);
+			packet pack(buf, PACKETSIZE);
+			printf("\n");
+		}
+		*/
 	}
 	
 	return 0;
