@@ -37,23 +37,6 @@ void signalHandler(int sigNum){
 	}
 }
 
-/*
-// UDP Download
-int download(int clientSockfd, std::string filepath){
-	int fd = open(filepath.c_str(), O_WRONLY|O_CREAT|O_TRUNC, 0644);
-    if (fd == -1){
-       std::cerr << "ERROR: Failed to open file\n";
-       return 1;
-    }
-	char buf[PACKETSIZE] = { 0 };
-	int res = 0;
-	int bytesRead = -1;
-	fd_set readfds2;
-	struct timeval timer = {15, 0};	
-	
-}
-*/
-
 // Saves file from client socket to specified directory
 int download(int clientSockfd, std::string filepath){
 	int fd = open(filepath.c_str(), O_WRONLY|O_CREAT|O_TRUNC, 0644);

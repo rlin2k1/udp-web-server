@@ -103,11 +103,8 @@ int main(int argc,char* argv[]){
 				perror("sendto failed");
 				return 0;
 			}
-			
 			break;
 		}
-		
-
 	}
 	
 	//Respond with ACK 
@@ -132,6 +129,10 @@ int main(int argc,char* argv[]){
 			return 1;
 		}
 
+		//remaddr is addr of another remote server
+		struct sockaddr_in remaddr; 
+		socklen_t addrlen = sizeof(remaddr);
+
       // Now check for pollin
       int result = poll(fds, 1, timemax);
       if (result < 0) {
@@ -144,7 +145,7 @@ int main(int argc,char* argv[]){
             packet recvPacket;
 
             // Get the received bytes
-            bytesRecv = recvfrom(sockfd, recvPacket.buf, PACKETSIZE, 0, (struct sockaddr *) &serveraddr, sizeof(serveraddr));
+            bytesRecv = recvfrom(sockfd, recvPacket.buf, PACKETSIZE, 0, (struct sockaddr *) &remaddr, &addrlen);
 
             // Check for error
             if (bytesRecv < 0) {
