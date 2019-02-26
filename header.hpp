@@ -114,7 +114,7 @@ bool packet::getAckFlag(){
 
 
 
-unsigned char*  packet::createPacket(unsigned char* payload, int payloadSize){
+unsigned char*  packet::createPacket(unsigned char* payload, int payloadSize, uint32_t ackNum, uint32_t seqNum, uint16_t connID){
 	
 	//std::cout << "HERE IS PAYLOAD IN HEADER : " << payload;
 	//Zero out current buffer
@@ -125,6 +125,7 @@ unsigned char*  packet::createPacket(unsigned char* payload, int payloadSize){
 		return NULL;
 	}
 
+   /*
 	unsigned char head[12];
 	//Place header in the beginning of the packet
 	head[0] = (header.seq >> 24) & 0xFF;
@@ -142,7 +143,9 @@ unsigned char*  packet::createPacket(unsigned char* payload, int payloadSize){
 	
 	head[10] = (header.flags >> 8) & 0xFF;
 	head[11]  = header.flags & 0xFF;
-	memcpy(buf  , (unsigned char*) head , 12);
+   */
+   packet_header header = {ackNum, seqNum, connID, 0};
+	memcpy(buf, (unsigned char*) header , sizeof(header));
 
 	//Fill remaining bytes with data
 	memcpy((unsigned char*) buf  + 12, (unsigned char*) payload , payloadSize);

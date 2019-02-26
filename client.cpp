@@ -15,6 +15,15 @@
 #include <poll.h>
 #include "header.hpp"
 
+// Global connection ID for just this client, as well as seq and ack
+uint16_t clientID = -1;
+uint32_t nextSeq = -1;
+uint32_t nextACK = -1;
+
+// Dup flag
+bool dup = false;
+
+// Main
 int main(int argc,char* argv[]){
 	if (argc != 4){
 		std::cerr << "ERROR: There should be 3 arguments. USAGE: ./client <HOSTNAME/IP> <PORT> <FILENAME>\n";
@@ -83,11 +92,17 @@ int main(int argc,char* argv[]){
 		unsigned char buf[PACKETSIZE];
 		
 		//Check for SYN|ACK from server
-		bytesRead= recvfrom(sockfd, buf, PACKETSIZE, 0, (struct sockaddr *)&remaddr, &addrlen);
+		bytesRead = recvfrom(sockfd, buf, PACKETSIZE, 0, (struct sockaddr *)&remaddr, &addrlen);
+
 		if (bytesRead > 0) {
 			printf("received message: \"%s\"\n", buf);
 			packet pack(buf, PACKETSIZE);
 			
+         // Store conn id into global variable
+         clientID = pack.header.connID;
+         nextACK = pack.header.seq + 1;
+         nextSeq = pack.header.ack;
+
 			//Create ack packet
 			unsigned char sendAck[PACKETSIZE] = {};
 			unsigned char* ack = createAck(pack.header.ack, pack.header.seq + 1, pack.header.connID);
@@ -103,27 +118,34 @@ int main(int argc,char* argv[]){
 		}
 	}
 	
-	//Respond with ACK 
 	//Begin transmission of file
-	while((bytesRead = fread(payload, sizeof(char), PAYLOADSIZE, fp)) > 0){
-		std::cout << "HERE IS PAYLOAD CLIENT: " << payload  << bytesRead <<  "\n";
-		
-		//Init new packet to send
-		char sendPack[PACKETSIZE]; 
-		memset(&sendPack, '\0', sizeof(sendPack));
+	while(true) {
+      // Get the file data, also check that a dup ack wasn't received
+      if (!dup) {
+         bytesRead = fread(payload, sizeof(char), PAYLOADSIZE, fp);
+      
+         // Check for erro
+         if (bytesRead == 0) break;
 
-		//Use data structure to help set up new packet
-		packet pack;
-		unsigned char*  hold  = pack.createPacket(payload, bytesRead);
-		memcpy(sendPack,  hold, PACKETSIZE);
-		
-		std::cout << "HERE IS SENDPACK: " << sendPack << "\n";
-		std::cout << "SENDING SEQ AS : " << pack.header.seq << "\n";
-		std::cout << "SENDING ACK AS : " << pack.header.ack << "\n";
-		if (sendto(sockfd, sendPack, PACKETSIZE, 0, (struct sockaddr *)&serveraddr, sizeof(serveraddr)) < 0) {
-			perror("sendto failed");
-			return 1;
-		}
+         std::cout << "HERE IS PAYLOAD CLIENT: " << payload  << bytesRead <<  "\n";
+         
+         //Init new packet to send
+         char sendPack[PACKETSIZE]; 
+         memset(&sendPack, '\0', sizeof(sendPack));
+
+         //Use data structure to help set up new packet
+         packet pack;
+         unsigned char*  hold  = pack.createPacket(payload, bytesRead, nextACK, nextSeq, clientID);
+         memcpy(sendPack,  hold, PACKETSIZE);
+         
+         std::cout << "HERE IS SENDPACK: " << sendPack << "\n";
+         std::cout << "SENDING SEQ AS : " << pack.header.seq << "\n";
+         std::cout << "SENDING ACK AS : " << pack.header.ack << "\n";
+         if (sendto(sockfd, sendPack, PACKETSIZE, 0, (struct sockaddr *)&serveraddr, sizeof(serveraddr)) < 0) {
+            perror("sendto failed");
+            return 1;
+         }
+      }
 
 		//remaddr is addr of another remote server
 		struct sockaddr_in remaddr; 
@@ -141,7 +163,8 @@ int main(int argc,char* argv[]){
             packet recvPacket;
 
             // Get the received bytes
-            bytesRecv = recvfrom(sockfd, recvPacket.buf, PACKETSIZE, 0, (struct sockaddr *) &remaddr, &addrlen);
+            bytesRecv = recvfrom(sockfd, recvPacket.buf, PACKETSIZE, 0, 
+                  (struct sockaddr *) &remaddr, &addrlen);
 
             // Check for error
             if (bytesRecv < 0) {
@@ -154,14 +177,31 @@ int main(int argc,char* argv[]){
             packet_header recvHeader;
             memcpy(&recvHeader, (packet_header *) recvPacket.buf, 12);
 
-            // TODO: check the ACK number and make sure that it matches what we want
-            uint32_t ack = recvHeader.ack;
+            // Now check that the connections are the same
+            if (recvHeader.connID == clientID) {
+               if (recvHeader.ack == nextSeq + bytesRead) {
+                  // Set dup to false
+                  dup = false;
+
+                  // Set next seq to the ack of the server (since it should be correct)
+                  nextSeq = recvHeader.ack;
+                  nextACK = 0;
+               } else {
+                  dup = true;
+               }
+            } else {
+               std::cerr << "ERROR: received wrong connection ID" << std::endl;
+               return 1;
+            }
          }
       } else {
          std::cerr << "ERROR: Did not receive ACK in under 0.5 seconds" << std::endl;
 
          // Reset pointer to beginning of file
          fseek(fp, -bytesRead, SEEK_CUR);
+
+         // Set dup to false since it's resending
+         dup = false;
       }
 	}
 	
