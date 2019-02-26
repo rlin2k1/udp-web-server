@@ -37,6 +37,7 @@ packet::packet(){
 	header.ack = 0;
 	header.connID =0;
 	header.flags = 0;
+   memset(&buf, '\0', sizeof(buf));
 }
 
 packet::packet(unsigned char* pack, int packetSize){
