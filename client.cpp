@@ -69,14 +69,8 @@ int main(int argc,char* argv[]){
 	unsigned char* syn = createSyn();
 	memcpy(sendSyn,  syn, PACKETSIZE);
 	
-	//Attempt to send syn packet until receive ACK
-	bool hasReceived = true;
 	//if timer < timeout -> check for ACK
 	// if timeout -> resend SYN
-	clock_t begin;
-	clock_t now;
-	begin = clock();
-	
 	while(1){	
 		if (sendto(sockfd, sendSyn, HEADERSIZE, 0, (struct sockaddr *)&serveraddr, sizeof(serveraddr)) < 0) {
 			perror("sendto failed");
@@ -92,10 +86,12 @@ int main(int argc,char* argv[]){
 		bytesRead= recvfrom(sockfd, buf, PACKETSIZE, 0, (struct sockaddr *)&remaddr, &addrlen);
 		if (bytesRead > 0) {
 			printf("received message: \"%s\"\n", buf);
+			packet pack(buf, PACKETSIZE);
 			
 			//Create ack packet
 			unsigned char sendAck[PACKETSIZE] = {};
-			unsigned char* ack = createAck(1, 2, 3);
+			unsigned char* ack = createAck(pack.header.ack, pack.header.seq + 1, pack.header.connID);
+			printf("RECEIVED CONNID : %u", pack.header.connID);
 			memcpy(sendAck,  ack,  PACKETSIZE);
 			
 			//Respond with Ack
