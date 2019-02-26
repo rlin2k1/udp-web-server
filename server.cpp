@@ -21,8 +21,6 @@
 
 #include "header.hpp" 
 
-#define PACKETSIZE 524
-#define PAYLOADSIZE 512
 #define max_clients 20
 
 //Global variables to close gracefully during signal
@@ -187,7 +185,6 @@ int main(int argc,char* argv[]){
 		std::cerr << "ERROR: bind failed, invalid port number";
 		return 2;
 	}
-
 	
 	//remaddr is addr of another remote server
 	struct sockaddr_in remaddr; 

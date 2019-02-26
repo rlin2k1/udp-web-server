@@ -2,6 +2,7 @@
 #include <netinet/in.h>
 
 #define PACKETSIZE 524
+#define PAYLOADSIZE 512
 
 struct packet_header {
 	uint32_t  seq;
@@ -30,8 +31,9 @@ struct packet {
 packet::packet(){
 	header.seq = 4321;
 	header.ack = 4322;
-	header.connID =2;
+	header.connID = 2;
 	header.flags = 3;
+   memset(&buf, '\0', sizeof(buf));
 }
 
 packet::packet(unsigned char* pack, int packetSize){
