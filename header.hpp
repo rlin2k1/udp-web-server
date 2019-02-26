@@ -3,6 +3,7 @@
 
 #define PACKETSIZE 524
 #define PAYLOADSIZE 512
+#define HEADERSIZE 12
 
 struct packet_header {
 	uint32_t  seq;
@@ -26,13 +27,16 @@ struct packet {
 	void setFinFlag();
 	unsigned char* createPacket(unsigned char * payload, int payloadSize);
 	void readPacket();
+	bool getAckFlag();
+	bool getSynFlag();
+	bool getFinFlag();
 };
 
 packet::packet(){
-	header.seq = 4321;
-	header.ack = 4322;
-	header.connID = 2;
-	header.flags = 3;
+	header.seq = 0;
+	header.ack = 0;
+	header.connID =0;
+	header.flags = 0;
    memset(&buf, '\0', sizeof(buf));
 }
 
@@ -86,6 +90,28 @@ void packet::setAckFlag(){
 	header.flags |= 0x0004;
 }
 
+bool packet::getFinFlag(){
+	if(header.flags & 0x0001){
+		return true;
+	}
+	return false;
+}
+
+bool packet::getSynFlag(){
+	if(header.flags & 0x0002){
+		return true;
+	}
+	return false;
+}
+
+bool packet::getAckFlag(){
+	if(header.flags & 0x0004){
+		return true;
+	}
+	return false;
+}
+
+
 
 
 unsigned char*  packet::createPacket(unsigned char* payload, int payloadSize){
@@ -94,7 +120,8 @@ unsigned char*  packet::createPacket(unsigned char* payload, int payloadSize){
 	//Zero out current buffer
 	memset(buf, '\0', PACKETSIZE);
 	
-	if (payloadSize > 512 || payload == NULL) {	
+	//Payload cannot be too big.
+	if (payloadSize > 512) {	
 		return NULL;
 	}
 
@@ -104,7 +131,6 @@ unsigned char*  packet::createPacket(unsigned char* payload, int payloadSize){
 	head[1] = (header.seq >> 16) & 0xFF;
 	head[2] = (header.seq >> 8) & 0xFF;
 	head[3]  = header.seq & 0xFF;
-	//std::cout << "HERE IS BUF: " << head[3] << "\n";
 
 	head[4] = (header.ack >> 24) & 0xFF;
 	head[5] = (header.ack >> 16) & 0xFF;
@@ -125,4 +151,40 @@ unsigned char*  packet::createPacket(unsigned char* payload, int payloadSize){
 	return buf;
 }
 
+unsigned char* createSynAck(uint16_t connid){
+	packet pack;
+	pack.setSeq(4321);
+	pack.setAck(12346);
+	pack.setConnID(connid);
+	pack.setSynFlag();
+	pack.setAckFlag();
+	
+	unsigned char payload[PAYLOADSIZE]; 
+	memset(&payload, '\0', sizeof(payload));
+	return pack.createPacket(payload, 0);
+}
+
+unsigned char* createSyn(){
+	packet pack;
+	pack.setSeq(12345);
+	pack.setAck(0);
+	pack.setConnID(0);
+	pack.setSynFlag();
+	
+	unsigned char payload[PAYLOADSIZE]; 
+	memset(&payload, '\0', sizeof(payload));
+	return pack.createPacket(payload, 0);
+}
+
+unsigned char* createAck(uint32_t seq, uint32_t ack, uint16_t connID ){
+	packet pack;
+	pack.setSeq(seq);
+	pack.setAck(ack);
+	pack.setConnID(connID);
+	pack.setAckFlag();
+	
+	unsigned char payload[PAYLOADSIZE];
+	memset(&payload, '\0', sizeof(payload));
+	return pack.createPacket(payload, 0);
+}
 
