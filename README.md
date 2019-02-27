@@ -1,5 +1,5 @@
 # CS118 Project 2
-Group Members and UCLA IDs: Roy Lin(UCLA ID: 704-767-891)<br>
+Group Members and UCLA IDs: Roy Lin(UCLA ID: 704-767-891), Julien Collins(UCLA ID: 804-745-115)<br>
 
 ## Contributions of Each Team Member
 

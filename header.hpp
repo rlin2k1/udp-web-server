@@ -37,6 +37,7 @@ packet::packet(){
 	header.ack = 0;
 	header.connID =0;
 	header.flags = 0;
+   memset(&buf, '\0', sizeof(buf));
 }
 
 packet::packet(unsigned char* pack, int packetSize){
@@ -115,7 +116,7 @@ bool packet::getAckFlag(){
 
 unsigned char*  packet::createPacket(unsigned char* payload, int payloadSize){
 	
-	std::cout << "HERE IS PAYLOAD IN HEADER : " << payload;
+	//std::cout << "HERE IS PAYLOAD IN HEADER : " << payload;
 	//Zero out current buffer
 	memset(buf, '\0', PACKETSIZE);
 	
@@ -146,7 +147,7 @@ unsigned char*  packet::createPacket(unsigned char* payload, int payloadSize){
 	//Fill remaining bytes with data
 	memcpy((unsigned char*) buf  + 12, (unsigned char*) payload , payloadSize);
 	
-	std::cout << "HERE IS BUF: " << buf << "\n";
+	//std::cout << "HERE IS BUF: " << buf << "\n";
 	return buf;
 }
 
@@ -155,6 +156,7 @@ unsigned char* createSynAck(uint16_t connid){
 	pack.setSeq(4321);
 	pack.setAck(12346);
 	pack.setConnID(connid);
+	printf("CONNID : %u", connid);
 	pack.setSynFlag();
 	pack.setAckFlag();
 	

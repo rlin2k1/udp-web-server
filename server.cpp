@@ -21,14 +21,15 @@
 
 #include "header.hpp" 
 
-#define PACKETSIZE 524
-#define PAYLOADSIZE 512
-#define max_clients 20
+#define max_clients 21
 
 //Global variables to close gracefully during signal
 std::thread threads[max_clients];
 int num_conn = 1;
-	
+//Conn_state[i][0] -> holds seq # of the ith client
+// Conn_state[i][1] -> holds ack# 
+int conn_state[max_clients][2] ;
+
 //If SIGQUIT or SIGTERM, wait for processes to finish and return 0
 void signalHandler(int sigNum){
 	if(sigNum == SIGPIPE || sigNum == SIGTERM){
@@ -38,23 +39,6 @@ void signalHandler(int sigNum){
 		}
 	}
 }
-
-/*
-// UDP Download
-int download(int clientSockfd, std::string filepath){
-	int fd = open(filepath.c_str(), O_WRONLY|O_CREAT|O_TRUNC, 0644);
-    if (fd == -1){
-       std::cerr << "ERROR: Failed to open file\n";
-       return 1;
-    }
-	char buf[PACKETSIZE] = { 0 };
-	int res = 0;
-	int bytesRead = -1;
-	fd_set readfds2;
-	struct timeval timer = {15, 0};	
-	
-}
-*/
 
 // Saves file from client socket to specified directory
 int download(int clientSockfd, std::string filepath){
@@ -187,7 +171,6 @@ int main(int argc,char* argv[]){
 		std::cerr << "ERROR: bind failed, invalid port number";
 		return 2;
 	}
-
 	
 	//remaddr is addr of another remote server
 	struct sockaddr_in remaddr; 
@@ -202,18 +185,20 @@ int main(int argc,char* argv[]){
 		if (bytesRead > 0) {
 			printf("received message: \"%s\"\nsize=%d\n", buf, bytesRead);
 			packet pack(buf, PACKETSIZE);
-			printf("\n");
+			printf("SEQ:%u, and ACK:%u\n\n", pack.header.seq, pack.header.ack);
 			//Create new connection
 			if (pack.getSynFlag()){
 				//save state
+				conn_state[num_conn][0] = pack.header.seq;
+				conn_state[num_conn][1] = pack.header.ack;
 				
 				//Respond:
 				//Create ack packet
 				unsigned char sendSynAck[PACKETSIZE] = {};
-				unsigned char* synAck = createSynAck( num_conn);
+				unsigned char* synAck = createSynAck((uint16_t)num_conn);
 				memcpy(sendSynAck,  synAck,  PACKETSIZE);
 				
-				//Respond withSynAck
+				//send out SynAck
 				if (sendto(sockfd, sendSynAck, HEADERSIZE, 0, (struct sockaddr *)&remaddr, addrlen) < 0) {
 					perror("sendto failed");
 					return 0;
@@ -224,15 +209,6 @@ int main(int argc,char* argv[]){
 				
 			}
 		}
-		/*
-		memset(buf, '\0', sizeof(buf));	
-		bytesRead= recvfrom(sockfd, buf, PACKETSIZE, 0, (struct sockaddr *)&remaddr, &addrlen);
-		if (bytesRead > 0) {
-			printf("received message: \"%s\"\nsize=%d\n", buf, bytesRead);
-			packet pack(buf, PACKETSIZE);
-			printf("\n");
-		}
-		*/
 	}
 	
 	return 0;
