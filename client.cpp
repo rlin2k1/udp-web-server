@@ -102,6 +102,16 @@ int main(int argc,char* argv[]){
 			break;
 		}
 	}
+
+   unsigned char sendPackTest[PACKETSIZE];
+   memset(&sendPackTest, '\0', sizeof(sendPackTest));
+   unsigned char sendTest[18] = "This is test data";
+   unsigned char* test = createDataPacket(50, 51, 1, sendTest, 18);
+   memcpy(sendPackTest, test, PACKETSIZE);
+   if (sendto(sockfd, sendTest, 18, 0, (struct sockaddr *) &serveraddr, sizeof(serveraddr)) < 0) {
+      perror("sendto failed");
+      return 1;
+   }
 	
 	//Respond with ACK 
 	//Begin transmission of file

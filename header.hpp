@@ -185,7 +185,7 @@ unsigned char* createDataPacket(uint32_t seq, uint32_t ack, uint16_t connID, uns
    pack.setConnID(connID);
    
    // Create payload and return entire packet
-   return pack.createPacket(payload, payloadSize);
+   return pack.createPacket(payload, payloadSize + 12);
 }
 
 unsigned char* createAck(uint32_t seq, uint32_t ack, uint16_t connID ){
