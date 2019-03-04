@@ -181,7 +181,7 @@ unsigned char* createDataPacket(uint32_t seq, uint32_t ack, uint16_t connID, uns
    // Create data packet
    packet pack;
    pack.setSeq(seq);
-   packet.setAck(ack);
+   pack.setAck(ack);
    pack.setConnID(connID);
    
    // Create payload and return entire packet

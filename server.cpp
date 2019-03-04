@@ -188,7 +188,6 @@ int main(int argc,char* argv[]){
 			printf("SEQ:%u, and ACK:%u\n\n", pack.header.seq, pack.header.ack);
 			//Create new connection
 			if (pack.getSynFlag()){
-            std::cerr << "Got syn ------------------" << std::endl;
 				//save state
 				conn_state[num_conn][0] = pack.header.seq;
 				conn_state[num_conn][1] = pack.header.ack;
