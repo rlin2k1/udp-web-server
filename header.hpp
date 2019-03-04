@@ -60,8 +60,8 @@ packet::packet(unsigned char* pack, int packetSize){
 	memcpy(&header.flags , (uint32_t*) (pack + 10),  2);
 	header.flags = ntohs(header.flags);
 	
-	std::cout << header.seq << ", " <<  header.ack << ", " <<  header.connID << ", " <<  header.flags << "\n";
-	std::cout << pack + 12 ;
+	//std::cout << header.seq << ", " <<  header.ack << ", " <<  header.connID << ", " <<  header.flags << "\n";
+	//std::cout << pack + 12 ;
 	//store copy of this buf inside
 	memcpy((unsigned char*) buf  , (unsigned char*) pack , packetSize);
 }
@@ -156,7 +156,7 @@ unsigned char* createSynAck(uint16_t connid){
 	pack.setSeq(4321);
 	pack.setAck(12346);
 	pack.setConnID(connid);
-	printf("CONNID : %u", connid);
+	//printf("CONNID : %u", connid);
 	pack.setSynFlag();
 	pack.setAckFlag();
 	
@@ -185,7 +185,7 @@ unsigned char* createDataPacket(uint32_t seq, uint32_t ack, uint16_t connID, uns
    pack.setConnID(connID);
    
    // Create payload and return entire packet
-   return pack.createPacket(payload, payloadSize + 12);
+   return pack.createPacket(payload, payloadSize);
 }
 
 unsigned char* createAck(uint32_t seq, uint32_t ack, uint16_t connID ){
@@ -200,3 +200,14 @@ unsigned char* createAck(uint32_t seq, uint32_t ack, uint16_t connID ){
 	return pack.createPacket(payload, 0);
 }
 
+unsigned char* createFin(uint32_t seq, uint16_t connID){
+	packet pack;
+	pack.setSeq(seq);
+	pack.setAck(0);
+	pack.setConnID(connID);
+	pack.setFinFlag();
+	
+	unsigned char payload[PAYLOADSIZE]; 
+	memset(&payload, '\0', sizeof(payload));
+	return pack.createPacket(payload, 0);
+}
