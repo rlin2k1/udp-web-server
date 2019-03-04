@@ -21,7 +21,7 @@ uint32_t nextSeq = -1;
 uint32_t nextACK = -1;
 
 // Dup flag
-bool dup = false;
+bool duplicate = false;
 
 // Main
 int main(int argc,char* argv[]){
@@ -80,7 +80,7 @@ int main(int argc,char* argv[]){
 	
 	//if timer < timeout -> check for ACK
 	// if timeout -> resend SYN
-	while(1){	
+	while (1){	
 		if (sendto(sockfd, sendSyn, HEADERSIZE, 0, (struct sockaddr *)&serveraddr, sizeof(serveraddr)) < 0) {
 			perror("sendto failed");
 			return 0;
@@ -119,9 +119,9 @@ int main(int argc,char* argv[]){
 	}
 	
 	//Begin transmission of file
-	while(true) {
-      // Get the file data, also check that a dup ack wasn't received
-      if (!dup) {
+	while (true) {
+      // Get the file data, also check that a duplicate ack wasn't received
+      if (!duplicate) {
          bytesRead = fread(payload, sizeof(char), PAYLOADSIZE, fp);
       
          // Check for erro
@@ -184,14 +184,14 @@ int main(int argc,char* argv[]){
             // Now check that the connections are the same
             if (recvHeader.connID == clientID) {
                if (recvHeader.ack == nextSeq + bytesRead) {
-                  // Set dup to false
-                  dup = false;
+                  // Set duplicate to false
+                  duplicate = false;
 
                   // Set next seq to the ack of the server (since it should be correct)
                   nextSeq = recvHeader.ack;
                   nextACK = 0;
                } else {
-                  dup = true;
+                  duplicate = true;
                }
             } else {
                std::cerr << "ERROR: received wrong connection ID" << std::endl;
@@ -204,10 +204,13 @@ int main(int argc,char* argv[]){
          // Reset pointer to beginning of file
          fseek(fp, -bytesRead, SEEK_CUR);
 
-         // Set dup to false since it's resending
-         dup = false;
+         // Set duplicate to false since it's resending
+         duplicate = false;
       }
 	}
+
+   // At this point, send the FIN flag because it finished reading the file
+
 	
    // Close the file descriptor
 	close(sockfd);

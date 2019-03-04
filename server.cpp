@@ -17,6 +17,7 @@
 #include <fcntl.h>  
 #include <fstream>
 #include <signal.h>
+#include <poll.h>
 #include <sys/stat.h>
 
 #include "header.hpp" 
@@ -26,7 +27,7 @@
 //Global variables to close gracefully during signal
 std::thread threads[max_clients];
 int num_conn = 1;
-//Conn_state[i][0] -> holds seq # of the ith client
+// Conn_state[i][0] -> holds seq # of the ith client
 // Conn_state[i][1] -> holds ack# 
 int conn_state[max_clients][2] ;
 
@@ -181,12 +182,8 @@ int main(int argc,char* argv[]){
 	printf("Listening on localhost at port: %d\n", port);
 
    // Create file info
-   std::string filename = "save/1.file";
-   FILE *fp = fopen(filename.c_str(), "w");
-   if (!fp) {
-      std::cerr << "ERROR: Could not open file\n";
-      return 1;
-   }
+   std::string filename;
+   FILE *fp;
 
    // Create timer through poll
    struct pollfd fds[1];
@@ -226,7 +223,20 @@ int main(int argc,char* argv[]){
                   perror("sendto failed");
                   return 1;
                }
+   
+               // Create file handle
+               filename = "save/" + std::to_string(num_conn) + ".file";
+               fp = fopen(filename.c_str(), "w");
+               if (!fp) {
+                  std::cerr << "ERROR: Could not open file\n";
+                  return 1;
+               }
+
+               // Increase number of connections
                num_conn++;
+            } else if (pack.getFinFlag()) { 
+               // This will deal with closing the connection
+
             } else { //Handle by saving into file
                // Read into file
                int fileBytesWritten = fwrite(buf + 12, sizeof(char), PAYLOADSIZE, fp);
