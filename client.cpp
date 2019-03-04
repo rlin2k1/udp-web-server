@@ -37,7 +37,6 @@ int main(int argc,char* argv[]){
 	}
 	sockfd = socket(AF_INET, SOCK_DGRAM | SOCK_NONBLOCK, 0);
 	
-	
 	// Convert hostname to ip
 	struct hostent *host;
 	if (!(host = gethostbyname(argv[1]))) {
@@ -52,7 +51,6 @@ int main(int argc,char* argv[]){
 	serveraddr.sin_family = AF_INET;
 	serveraddr.sin_port = htons(port);
 	memcpy((void *)&serveraddr.sin_addr, host->h_addr, host->h_length);
-
 
 	//Init for reading file
 	std::string filename = argv[3];
@@ -81,12 +79,12 @@ int main(int argc,char* argv[]){
 	//if timer < timeout -> check for ACK
 	// if timeout -> resend SYN
 	while (1) {	
-      std::cerr << "SENDING SYN, SEQ: " << 12345 << std::endl;
+      std::cout << "SEND " << 12345 << " " << 0 << " " << 0 << " <CWND> <SS-THRESH> SYN" << std::endl;
       if (sendto(sockfd, sendSyn, HEADERSIZE, 0, (struct sockaddr *)&serveraddr, sizeof(serveraddr)) < 0) {
          perror("sendto failed");
          return 0;
       }
-      int result = poll(fds, 1, -1);
+      int result = poll(fds, 1, 10000);
       if (result < 0) {
          std::cerr << "ERROR: unable to create poll" << std::endl;
          return 1;
@@ -100,8 +98,8 @@ int main(int argc,char* argv[]){
          bytesRead = recvfrom(sockfd, buf, PACKETSIZE, 0, (struct sockaddr *)&remaddr, &addrlen);
 
          if (bytesRead > 0) {
-            printf("received message: \"%s\"\n", buf);
             packet pack(buf, PACKETSIZE);
+            std::cout << "RECV " << pack.header.seq << " " << pack.header.ack << " " << pack.header.connID << " <CWND> <SS-THRESH> ACK SYN" << std::endl;
 
             // Store conn id into global variable
             clientID = pack.header.connID;
@@ -114,6 +112,7 @@ int main(int argc,char* argv[]){
             printf("RECEIVED CONNID : %u\n", pack.header.connID);
             memcpy(sendAck,  ack,  PACKETSIZE);
 
+            std::cout << "SEND " << pack.header.ack << " " << pack.header.seq + 1 << " " << pack.header.connID << " <CWND> <SS-THRESH> ACK" << std::endl;
             //Respond with Ack
             if (sendto(sockfd, sendAck, HEADERSIZE, 0, (struct sockaddr *)&serveraddr, sizeof(serveraddr)) < 0) {
                perror("sendto failed");
@@ -121,6 +120,9 @@ int main(int argc,char* argv[]){
             }
             break;
          }
+      } else {
+         std::cerr << "ERROR: incorrect host name (probably)" << std::endl;
+         return 1;
       }
 	}
 	
@@ -151,6 +153,7 @@ int main(int argc,char* argv[]){
          //std::cout << "HERE IS SENDPACK: " << sendPack << "\n";
          std::cout << "SENDING SEQ AS : " << pack.header.seq << "\n";
          std::cout << "SENDING ACK AS : " << pack.header.ack << "\n";
+         std::cout << "SEND " << nextSeq << " " << nextAck << " " << clientID << " <CWND> <SS-THRESH> ACK" << std::endl;
          if (sendto(sockfd, sendPack, PACKETSIZE, 0, (struct sockaddr *)&serveraddr, sizeof(serveraddr)) < 0) {
             perror("sendto failed");
             return 1;
@@ -185,6 +188,8 @@ int main(int argc,char* argv[]){
             // Create packet from buf
             packet recvPack(recvBuf, PACKETSIZE);
 
+            std::cout << "RECV " << recvPack.header.seq << " " << recvPack.header.ack << " " << recvPack.header.connID << " <CWND> <SS-THRESH> ACK" << std::endl;
+
             std::cout << "RECEIVED CONNID AS " << recvPack.header.connID << std::endl;
             std::cout << "RECEIVED ACK AS " << recvPack.header.ack << std::endl;
             std::cout << "RECEIVED SEQ AS " << recvPack.header.seq << std::endl;
@@ -205,6 +210,7 @@ int main(int argc,char* argv[]){
                   nextAck = 0;
                } else {
                   std::cerr << "RECEIVED DUPLICATE ACK" << std::endl;
+                  std::cout << "DROP " << recvPack.header.seq << " " << recvPack.header.ack << " " << recvPack.header.connID << " <CWND> <SS-THRESH> ACK" << std::endl;
                   duplicate = true;
                }
             } else {
@@ -229,6 +235,7 @@ int main(int argc,char* argv[]){
    memcpy(sendFin, fin, PACKETSIZE);
    while (1) {
       std::cerr << "SENDING FIN" << std::endl;
+      std::cout << "SEND " << nextSeq << " " << 0 << " " << clientID << " <CWND> <SS-THRESH> FIN" << std::endl;
       if (sendto(sockfd, sendFin, HEADERSIZE, 0, (struct sockaddr *) &serveraddr, sizeof(serveraddr)) < 0) {
          std::cerr << "ERROR: unable to send fin packet" << std::endl;
          return 1;
@@ -253,6 +260,7 @@ int main(int argc,char* argv[]){
             printf("received message: \"%s\"\n", buf);
             packet pack(buf, PACKETSIZE);
             if (pack.getAckFlag()) {
+               std::cout << "RECV " << pack.header.seq << " " << pack.header.ack << " " << pack.header.connID << " <CWND> <SS-THRESH> ACK" << std::endl;
                std::cerr << "GOT ACK BACK ______" << std::endl;
                std::cerr << "RECEIVED SEQ AS " << pack.header.seq << std::endl;
                std::cerr << "RECEIVED ACK AS " << pack.header.ack << std::endl;
@@ -286,13 +294,15 @@ int main(int argc,char* argv[]){
                      // Check for FIN from server
                      packet pack(recvBuf, PACKETSIZE);
                      if (pack.getFinFlag()) {
+                        std::cout << "RECV " << pack.header.seq << " " << pack.header.ack << " " << pack.header.connID << " <CWND> <SS-THRESH> FIN" << std::endl;
                         // Respond with ACK
                         unsigned char sendAck[PACKETSIZE] = {};
-                        unsigned char* ack = createAck(nextSeq + 1, pack.header.seq + 1, pack.header.connID);
+                        unsigned char* ack = createAck(nextSeq + 1, pack.header.seq + 1, clientID);
                         printf("RECEIVED CONNID IN FIN : %u\n", pack.header.connID);
                         memcpy(sendAck,  ack,  PACKETSIZE);
 
                         //Respond with Ack
+                        std::cout << "SEND " << nextSeq + 1 << " " << pack.header.seq + 1 << " " << clientID << " <CWND> <SS-THRESH> ACK" << std::endl;
                         if (sendto(sockfd, sendAck, HEADERSIZE, 0, (struct sockaddr *) &serveraddr, sizeof(serveraddr)) < 0) {
                            perror("ERROR: sendto failed");
                            return 0;

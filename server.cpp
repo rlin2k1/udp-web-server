@@ -28,7 +28,7 @@ std::thread threads[max_clients];
 int num_conn = 1;
 //Conn_state[i][0] -> holds seq # of the ith client
 // Conn_state[i][1] -> holds ack# 
-int conn_state[max_clients][2] ;
+int conn_state[max_clients] ;
 FILE *files[max_clients];
 
 //If SIGQUIT or SIGTERM, wait for processes to finish and return 0
@@ -191,10 +191,10 @@ int main(int argc,char* argv[]){
 			printf("\nRECEIVED SEQ:%u, and ACK:%u\n\n", pack.header.seq, pack.header.ack);
 			//Create new connection
 			if (pack.getSynFlag()){
+            std::cout << "RECV " << pack.header.seq << " " << pack.header.ack << " " << pack.header.connID << " SYN" << std::endl;
             std::cerr << "RECEIVED SYN PACKET" << std::endl;
 				//save state
-				conn_state[num_conn][0] = pack.header.seq;
-				conn_state[num_conn][1] = pack.header.ack;
+				conn_state[num_conn] = pack.header.seq + 1;
             std::cerr << "RECEIVED SYN SEQ: " << pack.header.seq << std::endl;
             std::cerr << "RECEIVED SYN ACK: " << pack.header.ack << std::endl;
 				
@@ -205,6 +205,7 @@ int main(int argc,char* argv[]){
 				memcpy(sendSynAck,  synAck,  PACKETSIZE);
 				
 				//send out SynAck
+            std::cout << "SEND " << 4321 << " " << 12346 << " " << num_conn << " ACK SYN" << std::endl;
 				if (sendto(sockfd, sendSynAck, HEADERSIZE, 0, (struct sockaddr *)&remaddr, addrlen) < 0) {
 					perror("sendto failed");
 					return 0;
@@ -221,6 +222,7 @@ int main(int argc,char* argv[]){
             // Increase number of connections
 				num_conn++;
 			} else if (pack.getFinFlag()) {
+            std::cout << "RECV " << pack.header.seq << " " << pack.header.ack << " " << pack.header.connID << " FIN" << std::endl;
             std::cerr << "GOT FIN FLAG" << std::endl;
             // Create ACK packet to send back
             unsigned char sendAck[PACKETSIZE] = {};
@@ -228,6 +230,7 @@ int main(int argc,char* argv[]){
             memcpy(sendAck, ack, PACKETSIZE);
 
             // Respond with ACK
+            std::cout << "SEND " << 4322 << " " << pack.header.seq + 1 << " " << pack.header.connID << " ACK" << std::endl;
             if (sendto(sockfd, sendAck, HEADERSIZE, 0, (struct sockaddr *) &remaddr, addrlen) < 0) {
                perror("ERROR: fin ack failed");
                return 1;
@@ -241,6 +244,7 @@ int main(int argc,char* argv[]){
             unsigned char sendFin[PACKETSIZE] = {};
             unsigned char *fin = createFin(4322, pack.header.connID);
             memcpy(sendFin, fin, PACKETSIZE);
+            std::cout << "SEND " << 4322 << " " << 0 << " " << pack.header.connID << " FIN" << std::endl;
             if (sendto(sockfd, sendFin, HEADERSIZE, 0, (struct sockaddr *) &remaddr, sizeof(remaddr)) < 0) {
                std::cerr << "ERROR: unable to send fin packet" << std::endl;
                return 1;
@@ -249,33 +253,44 @@ int main(int argc,char* argv[]){
             if (!pack.getAckFlag()) {
                std::cerr << "RECEIVED NORMAL HEADER" << std::endl;
 
-               // Try to copy into char buffer
-               char test[PAYLOADSIZE];
-               memset(&test, '\0', sizeof(test));
-               memcpy(test, buf + 12, PAYLOADSIZE);
-
-               //printf("received message: \"%s\"\nsize=%d\n", buf + 12, bytesRead);
-               //std::cerr << "RECEIVED MESSAGE: " << test << std::endl;
-               std::cerr << "RECEIVED CONN ID: " << pack.header.connID << std::endl;
-               std::cerr << "RECEIVED SEQ: " << pack.header.seq << std::endl;
-               
-               // Store into file
+               // CWIND STUFF
                int conn = (int) pack.header.connID;
-               int fileBytesWritten = fwrite(test, sizeof(char), strlen(test), files[conn]);
-               std::cerr << "BYTES WRITTEN: " << fileBytesWritten << std::endl;
-               std::cerr << "PAYLOAD SIZE: " << strlen(test) << std::endl;
+               if (conn_state[conn] == (int) pack.header.seq) {
+                  //do stuff as below 
+                  // Try to copy into char buffer
+                  char test[PAYLOADSIZE];
+                  memset(&test, '\0', sizeof(test));
+                  memcpy(test, buf + 12, PAYLOADSIZE);
 
-               // Send back appropriate ack
-               unsigned char sendAck[PACKETSIZE] = {};
-               unsigned char *ack =
-                  createAck(pack.header.ack, pack.header.seq + fileBytesWritten, pack.header.connID);
-               memcpy(sendAck, ack, PACKETSIZE);
+                  //printf("received message: \"%s\"\nsize=%d\n", buf + 12, bytesRead);
+                  //std::cerr << "RECEIVED MESSAGE: " << test << std::endl;
+                  std::cerr << "RECEIVED CONN ID: " << pack.header.connID << std::endl;
+                  std::cerr << "RECEIVED SEQ: " << pack.header.seq << std::endl;
+                  
+                  // Store into file
+                  int conn = (int) pack.header.connID;
+                  int fileBytesWritten = fwrite(test, sizeof(char), strlen(test), files[conn]);
+                  std::cerr << "BYTES WRITTEN: " << fileBytesWritten << std::endl;
+                  std::cerr << "PAYLOAD SIZE: " << strlen(test) << std::endl;
 
-               // Send ack to client
-               if (sendto(sockfd, sendAck, HEADERSIZE, 0, (struct sockaddr *) &remaddr, addrlen) < 0) {
-                  perror("ERROR: sendto failed");
-                  return 1;
+                  // Send back appropriate ack
+                  unsigned char sendAck[PACKETSIZE] = {};
+                  unsigned char *ack =
+                     createAck(pack.header.ack, pack.header.seq + fileBytesWritten, pack.header.connID);
+                  memcpy(sendAck, ack, PACKETSIZE);
+
+                  // Send ack to client
+                  std::cout << "SEND " << pack.header.ack << " " << pack.header.seq + fileBytesWritten << " " << pack.header.connID << " ACK" << std::endl;
+                  if (sendto(sockfd, sendAck, HEADERSIZE, 0, (struct sockaddr *) &remaddr, addrlen) < 0) {
+                     perror("ERROR: sendto failed");
+                     return 1;
+                  }
+
+                  // update conn_state
+                  conn_state[conn] = (int) pack.header.seq + fileBytesWritten;
                }
+            } else {
+               std::cout << "RECV " << pack.header.seq << " " << pack.header.ack << " " << pack.header.connID << " ACK" << std::endl;
             }
 			}
 		}
