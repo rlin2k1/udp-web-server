@@ -177,6 +177,17 @@ unsigned char* createSyn(){
 	return pack.createPacket(payload, 0);
 }
 
+unsigned char* createDataPacket(uint32_t seq, uint32_t ack, uint16_t connID, unsigned char *payload, int payloadSize) {
+   // Create data packet
+   packet pack;
+   pack.setSeq(seq);
+   packet.setAck(ack);
+   pack.setConnID(connID);
+   
+   // Create payload and return entire packet
+   return pack.createPacket(payload, payloadSize);
+}
+
 unsigned char* createAck(uint32_t seq, uint32_t ack, uint16_t connID ){
 	packet pack;
 	pack.setSeq(seq);
