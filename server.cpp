@@ -181,20 +181,22 @@ int main(int argc,char* argv[]){
 	unsigned char buf[PACKETSIZE] = { 0 };
 	int bytesRead = -1;
 	printf("Listening on localhost at port: %d\n", port);
-   //int num = 0;
 	while (1) {
 		memset(buf, '\0', sizeof(buf));
 		bytesRead= recvfrom(sockfd, buf, PACKETSIZE, 0, (struct sockaddr *)&remaddr, &addrlen);
+      //sleep(5);
 		if (bytesRead > 0) {
 			//printf("received message: \"%s\"\nsize=%d\n", buf, bytesRead);
 			packet pack(buf, PACKETSIZE);
-			printf("\nSEQ:%u, and ACK:%u\n\n", pack.header.seq, pack.header.ack);
+			printf("\nRECEIVED SEQ:%u, and ACK:%u\n\n", pack.header.seq, pack.header.ack);
 			//Create new connection
 			if (pack.getSynFlag()){
             std::cerr << "RECEIVED SYN PACKET" << std::endl;
 				//save state
 				conn_state[num_conn][0] = pack.header.seq;
 				conn_state[num_conn][1] = pack.header.ack;
+            std::cerr << "RECEIVED SYN SEQ: " << pack.header.seq << std::endl;
+            std::cerr << "RECEIVED SYN ACK: " << pack.header.ack << std::endl;
 				
 				//Respond:
 				//Create ack packet
@@ -236,30 +238,32 @@ int main(int argc,char* argv[]){
             fclose(files[conn]);
 
             // ALso create FIN?
+            unsigned char sendFin[PACKETSIZE] = {};
+            unsigned char *fin = createFin(4322, pack.header.connID);
+            memcpy(sendFin, fin, PACKETSIZE);
+            if (sendto(sockfd, sendFin, HEADERSIZE, 0, (struct sockaddr *) &remaddr, sizeof(remaddr)) < 0) {
+               std::cerr << "ERROR: unable to send fin packet" << std::endl;
+               return 1;
+            }
          } else { //Handle by saving into file
             if (!pack.getAckFlag()) {
                std::cerr << "RECEIVED NORMAL HEADER" << std::endl;
-               //num++;
+
                // Try to copy into char buffer
                char test[PAYLOADSIZE];
                memset(&test, '\0', sizeof(test));
                memcpy(test, buf + 12, PAYLOADSIZE);
 
                //printf("received message: \"%s\"\nsize=%d\n", buf + 12, bytesRead);
-               std::cerr << "RECEIVED MESSAGE: " << test << std::endl;
+               //std::cerr << "RECEIVED MESSAGE: " << test << std::endl;
                std::cerr << "RECEIVED CONN ID: " << pack.header.connID << std::endl;
+               std::cerr << "RECEIVED SEQ: " << pack.header.seq << std::endl;
                
                // Store into file
                int conn = (int) pack.header.connID;
                int fileBytesWritten = fwrite(test, sizeof(char), strlen(test), files[conn]);
                std::cerr << "BYTES WRITTEN: " << fileBytesWritten << std::endl;
                std::cerr << "PAYLOAD SIZE: " << strlen(test) << std::endl;
-               /*
-               if (num == 4) {
-                  fclose(files[conn]);
-                  return 0;
-               }
-               */
 
                // Send back appropriate ack
                unsigned char sendAck[PACKETSIZE] = {};
