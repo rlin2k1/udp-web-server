@@ -188,49 +188,67 @@ int main(int argc,char* argv[]){
       return 1;
    }
 
-	while(1) {
-		memset(buf, '\0', sizeof(buf));
-		bytesRead= recvfrom(sockfd, buf, PACKETSIZE, 0, (struct sockaddr *)&remaddr, &addrlen);
-		if (bytesRead > 0) {
-			printf("received message: \"%s\"\nsize=%d\n", buf, bytesRead);
-			packet pack(buf, PACKETSIZE);
-			printf("SEQ:%u, and ACK:%u\n\n", pack.header.seq, pack.header.ack);
-			//Create new connection
-			if (pack.getSynFlag()){
-				//save state
-				conn_state[num_conn][0] = pack.header.seq;
-				conn_state[num_conn][1] = pack.header.ack;
-				
-				//Respond:
-				//Create ack packet
-				unsigned char sendSynAck[PACKETSIZE] = {};
-				unsigned char* synAck = createSynAck((uint16_t)num_conn);
-				memcpy(sendSynAck,  synAck,  PACKETSIZE);
-				
-				//send out SynAck
-				if (sendto(sockfd, sendSynAck, HEADERSIZE, 0, (struct sockaddr *)&remaddr, addrlen) < 0) {
-					perror("sendto failed");
-					return 1;
-				}
-				num_conn++;
-			} else { //Handle by saving into file
-            // Read into file
-            int fileBytesWritten = fwrite(buf + 12, sizeof(char), PAYLOADSIZE, fp);
+   // Create timer through poll
+   struct pollfd fds[1];
+   fds[0].fd = sockfd;
+   fds[0].events = POLLIN;
+   int timemax = 10000;
 
-            // Set seq number to ack received, and set ack to seq number + bytes written to the file
-            unsigned char sendAck[PACKETSIZE] = {};
-            unsigned char* ack = 
-               createAck(pack.header.ack, pack.header.seq + fileBytesWritten, pack.header.connID);
-            memcpy(sendAck, ack, PACKETSIZE);
+   // Loop through forever 
+	while (1) {
+      // Check for pollin event
+      int result = poll(fds, 1, timemax);
+      if (result < 0) {
+         std::cerr << "ERROR: unable to create poll" << std::endl;
+         return 1;
+      } else if (result > 0) {
+         // Read from client into buf
+         memset(buf, '\0', sizeof(buf));
+         bytesRead= recvfrom(sockfd, buf, PACKETSIZE, 0, (struct sockaddr *)&remaddr, &addrlen);
+         if (bytesRead > 0) {
+            printf("received message: \"%s\"\nsize=%d\n", buf, bytesRead);
+            packet pack(buf, PACKETSIZE);
+            printf("SEQ:%u, and ACK:%u\n\n", pack.header.seq, pack.header.ack);
+            //Create new connection
+            if (pack.getSynFlag()){
+               //save state
+               conn_state[num_conn][0] = pack.header.seq;
+               conn_state[num_conn][1] = pack.header.ack;
+               
+               //Respond:
+               //Create ack packet
+               unsigned char sendSynAck[PACKETSIZE] = {};
+               unsigned char* synAck = createSynAck((uint16_t)num_conn);
+               memcpy(sendSynAck,  synAck,  PACKETSIZE);
+               
+               //send out SynAck
+               if (sendto(sockfd, sendSynAck, HEADERSIZE, 0, (struct sockaddr *)&remaddr, addrlen) < 0) {
+                  perror("sendto failed");
+                  return 1;
+               }
+               num_conn++;
+            } else { //Handle by saving into file
+               // Read into file
+               int fileBytesWritten = fwrite(buf + 12, sizeof(char), PAYLOADSIZE, fp);
 
-            // Send ack to client
-            if (sendto(sockfd, sendAck, HEADERSIZE, 0, 
-                     (struct sockaddr *) &remaddr, addrlen) < 0) {
-               perror("ERROR: sendto failed");
-               return 1;
+               // Set seq number to ack received, and set ack to seq number + bytes written to the file
+               unsigned char sendAck[PACKETSIZE] = {};
+               unsigned char* ack = 
+                  createAck(pack.header.ack, pack.header.seq + fileBytesWritten, pack.header.connID);
+               memcpy(sendAck, ack, PACKETSIZE);
+
+               // Send ack to client
+               if (sendto(sockfd, sendAck, HEADERSIZE, 0, (struct sockaddr *) &remaddr, addrlen) < 0) {
+                  perror("ERROR: sendto failed");
+                  return 1;
+               }
             }
-			}
-		}
+         }
+      } else {
+         std::cerr << "ERROR: haven't received info from client for 10 seconds" << std::endl;
+         fwrite("ERROR", sizeof(char), 6 * sizeof(char), fp);
+         return 1;
+      }
 	}
 	
 	return 0;

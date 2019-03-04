@@ -154,7 +154,7 @@ int main(int argc,char* argv[]){
       // Now check for pollin
       int result = poll(fds, 1, timemax);
       if (result < 0) {
-         std::cerr << "Error creating poll" << std::endl;
+         std::cerr << "ERROR: unable to creating poll" << std::endl;
          exit(1);
       } else if (result > 0) {
          // Check for any sign from the server
