@@ -29,6 +29,7 @@ int num_conn = 1;
 //Conn_state[i][0] -> holds seq # of the ith client
 // Conn_state[i][1] -> holds ack# 
 int conn_state[max_clients][2] ;
+FILE *files[max_clients];
 
 //If SIGQUIT or SIGTERM, wait for processes to finish and return 0
 void signalHandler(int sigNum){
@@ -38,6 +39,7 @@ void signalHandler(int sigNum){
 			threads[j].join();
 		}
 	}
+   fclose(files[1]);
 }
 
 // Saves file from client socket to specified directory
@@ -179,15 +181,17 @@ int main(int argc,char* argv[]){
 	unsigned char buf[PACKETSIZE] = { 0 };
 	int bytesRead = -1;
 	printf("Listening on localhost at port: %d\n", port);
-	while(1) {
+   //int num = 0;
+	while (1) {
 		memset(buf, '\0', sizeof(buf));
 		bytesRead= recvfrom(sockfd, buf, PACKETSIZE, 0, (struct sockaddr *)&remaddr, &addrlen);
 		if (bytesRead > 0) {
-			printf("received message: \"%s\"\nsize=%d\n", buf, bytesRead);
+			//printf("received message: \"%s\"\nsize=%d\n", buf, bytesRead);
 			packet pack(buf, PACKETSIZE);
-			printf("SEQ:%u, and ACK:%u\n\n", pack.header.seq, pack.header.ack);
+			printf("\nSEQ:%u, and ACK:%u\n\n", pack.header.seq, pack.header.ack);
 			//Create new connection
 			if (pack.getSynFlag()){
+            std::cerr << "RECEIVED SYN PACKET" << std::endl;
 				//save state
 				conn_state[num_conn][0] = pack.header.seq;
 				conn_state[num_conn][1] = pack.header.ack;
@@ -203,10 +207,72 @@ int main(int argc,char* argv[]){
 					perror("sendto failed");
 					return 0;
 				}
+
+            // Create file handler
+            std::string filename = std::to_string(num_conn) + ".file";
+            files[num_conn] = fopen(filename.c_str(), "w");
+            if (!files[num_conn]) {
+               std::cerr << "ERROR: could not open file" << std::endl;
+               return 1;
+            }
+
+            // Increase number of connections
 				num_conn++;
-			}
-			else{ //Handle by saving into file
-				
+			} else if (pack.getFinFlag()) {
+            std::cerr << "GOT FIN FLAG" << std::endl;
+            // Create ACK packet to send back
+            unsigned char sendAck[PACKETSIZE] = {};
+            unsigned char *ack = createAck(4322, pack.header.seq + 1, pack.header.connID);
+            memcpy(sendAck, ack, PACKETSIZE);
+
+            // Respond with ACK
+            if (sendto(sockfd, sendAck, HEADERSIZE, 0, (struct sockaddr *) &remaddr, addrlen) < 0) {
+               perror("ERROR: fin ack failed");
+               return 1;
+            }
+
+            // Close FD
+            int conn = (int) pack.header.connID;
+            fclose(files[conn]);
+
+            // ALso create FIN?
+         } else { //Handle by saving into file
+            if (!pack.getAckFlag()) {
+               std::cerr << "RECEIVED NORMAL HEADER" << std::endl;
+               //num++;
+               // Try to copy into char buffer
+               char test[PAYLOADSIZE];
+               memset(&test, '\0', sizeof(test));
+               memcpy(test, buf + 12, PAYLOADSIZE);
+
+               //printf("received message: \"%s\"\nsize=%d\n", buf + 12, bytesRead);
+               std::cerr << "RECEIVED MESSAGE: " << test << std::endl;
+               std::cerr << "RECEIVED CONN ID: " << pack.header.connID << std::endl;
+               
+               // Store into file
+               int conn = (int) pack.header.connID;
+               int fileBytesWritten = fwrite(test, sizeof(char), strlen(test), files[conn]);
+               std::cerr << "BYTES WRITTEN: " << fileBytesWritten << std::endl;
+               std::cerr << "PAYLOAD SIZE: " << strlen(test) << std::endl;
+               /*
+               if (num == 4) {
+                  fclose(files[conn]);
+                  return 0;
+               }
+               */
+
+               // Send back appropriate ack
+               unsigned char sendAck[PACKETSIZE] = {};
+               unsigned char *ack =
+                  createAck(pack.header.ack, pack.header.seq + fileBytesWritten, pack.header.connID);
+               memcpy(sendAck, ack, PACKETSIZE);
+
+               // Send ack to client
+               if (sendto(sockfd, sendAck, HEADERSIZE, 0, (struct sockaddr *) &remaddr, addrlen) < 0) {
+                  perror("ERROR: sendto failed");
+                  return 1;
+               }
+            }
 			}
 		}
 	}
