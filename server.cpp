@@ -179,6 +179,15 @@ int main(int argc,char* argv[]){
 	unsigned char buf[PACKETSIZE] = { 0 };
 	int bytesRead = -1;
 	printf("Listening on localhost at port: %d\n", port);
+
+   // Create file info
+   std::string filename = "save/1.file";
+   FILE *fp = fopen(filename.c_str(), "w");
+   if (!fp) {
+      std::cerr << "ERROR: Could not open file\n";
+      return 1;
+   }
+
 	while(1) {
 		memset(buf, '\0', sizeof(buf));
 		bytesRead= recvfrom(sockfd, buf, PACKETSIZE, 0, (struct sockaddr *)&remaddr, &addrlen);
@@ -201,12 +210,25 @@ int main(int argc,char* argv[]){
 				//send out SynAck
 				if (sendto(sockfd, sendSynAck, HEADERSIZE, 0, (struct sockaddr *)&remaddr, addrlen) < 0) {
 					perror("sendto failed");
-					return 0;
+					return 1;
 				}
 				num_conn++;
-			}
-			else{ //Handle by saving into file
-				
+			} else { //Handle by saving into file
+            // Read into file
+            int fileBytesWritten = fwrite(buf + 12, sizeof(char), PAYLOADSIZE, fp);
+
+            // Set seq number to ack received, and set ack to seq number + bytes written to the file
+            unsigned char sendAck[PACKETSIZE] = {};
+            unsigned char* ack = 
+               createAck(pack.header.ack, pack.header.seq + fileBytesWritten, pack.header.connID);
+            memcpy(sendAck, ack, PACKETSIZE);
+
+            // Send ack to client
+            if (sendto(sockfd, sendAck, HEADERSIZE, 0, 
+                     (struct sockaddr *) &remaddr, addrlen) < 0) {
+               perror("ERROR: sendto failed");
+               return 1;
+            }
 			}
 		}
 	}

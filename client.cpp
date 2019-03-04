@@ -177,6 +177,10 @@ int main(int argc,char* argv[]){
             packet_header recvHeader;
             memcpy(&recvHeader, (packet_header *) recvPacket.buf, 12);
 
+            std::cout << "RECEIVED CONNID AS " << recvHeader.connID << std::endl;
+            std::cout << "RECEIVED ACK AS " << recvHeader.ack << std::endl;
+            std::cout << "RECEIVED SEQ AS " << recvHeader.seq << std::endl;
+
             // Now check that the connections are the same
             if (recvHeader.connID == clientID) {
                if (recvHeader.ack == nextSeq + bytesRead) {
