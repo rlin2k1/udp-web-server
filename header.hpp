@@ -1,3 +1,12 @@
+/* header.hpp
+Header File for PACKET STRUCT
+
+Author(s):
+  Grand Huynh, Julien Collins, Roy Lin
+
+Date Created:
+  March 1st, 2019
+*/
 #include <bitset>
 #include <netinet/in.h>
 
@@ -16,7 +25,7 @@ struct packet {
 	packet_header header;
 	unsigned char buf[524];
 	
-	//helper func
+	//Helper Functions
 	packet();
 	packet(unsigned char* packet, int packetSize);
 	void setSeq(uint32_t seqnum);
@@ -42,7 +51,7 @@ packet::packet(){
 
 packet::packet(unsigned char* pack, int packetSize){
 	//TODO: Fix 
-	//Must be creating a full packet for now
+	//Must Be Creating a Full Packet for Now
 	if (packetSize != PACKETSIZE) {
 		return;
 	}
@@ -60,8 +69,6 @@ packet::packet(unsigned char* pack, int packetSize){
 	memcpy(&header.flags , (uint32_t*) (pack + 10),  2);
 	header.flags = ntohs(header.flags);
 	
-	//std::cout << header.seq << ", " <<  header.ack << ", " <<  header.connID << ", " <<  header.flags << "\n";
-	//std::cout << pack + 12 ;
 	//store copy of this buf inside
 	memcpy((unsigned char*) buf  , (unsigned char*) pack , packetSize);
 }
@@ -110,9 +117,6 @@ bool packet::getAckFlag(){
 	}
 	return false;
 }
-
-
-
 
 unsigned char*  packet::createPacket(unsigned char* payload, int payloadSize){
 	
