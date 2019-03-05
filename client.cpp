@@ -141,12 +141,20 @@ int main(int argc, char *argv[]) //Main Function w/ Arguments from Command Line
    unsigned char* syn = createSyn();
    memcpy(sendSyn, syn, PACKETSIZE);
 
-   // ------------------------------------------------------------------------ //
+   // ----------------------------------------------------------------------- //
+   // Congestion Control Variables
+   // ----------------------------------------------------------------------- //
+   int CWND = 512; //Congestion Window Size
+	int SSTHRESH = 10000; //Slow Start Threshold
+	int current_window = 0; //Current Window Size
+	int send_size = PAYLOADSIZE; //How Much We Should Send
+
+   // ----------------------------------------------------------------------- //
    // THREE WAY HANDSHAKE!!!
-   // ------------------------------------------------------------------------ //
+   // ----------------------------------------------------------------------- //
    cerr << "START THREE WAY HANDSHAKE-------------------------------------------" << endl;
    while (1) {	
-      cout << "SEND " << 12345 << " " << 0 << " " << 0 << " <CWND> <SS-THRESH> SYN" << endl;
+      cout << "SEND " << 12345 << " " << 0 << " " << 0 << " " << CWND << " " << SSTHRESH << " SYN" << endl;
       //Send First HandShake to Server!
       if (sendto(sockfd, sendSyn, HEADERSIZE, 0, (struct sockaddr *)&serveraddr, sizeof(serveraddr)) < 0) {
          perror("ERROR: Sendto Failed!");
@@ -167,7 +175,7 @@ int main(int argc, char *argv[]) //Main Function w/ Arguments from Command Line
 
          if (bytesRead > 0) { //We Got a Packet from the Server. Second HandShake
             packet pack(buf, PACKETSIZE);
-            cout << "RECV " << pack.header.seq << " " << pack.header.ack << " " << pack.header.connID << " <CWND> <SS-THRESH> ACK SYN" << endl;
+            cout << "RECV " << pack.header.seq << " " << pack.header.ack << " " << pack.header.connID << " " << CWND << " " << SSTHRESH << " ACK SYN" << endl;
 
             // Store Connetion ID into a Global Variable
             clientID = pack.header.connID;
@@ -179,7 +187,7 @@ int main(int argc, char *argv[]) //Main Function w/ Arguments from Command Line
             unsigned char* ack = createAck(pack.header.ack, pack.header.seq + 1, pack.header.connID);
             memcpy(sendAck,  ack,  PACKETSIZE);
 
-            cout << "SEND " << pack.header.ack << " " << pack.header.seq + 1 << " " << pack.header.connID << " <CWND> <SS-THRESH> ACK" << endl;
+            cout << "SEND " << pack.header.ack << " " << pack.header.seq + 1 << " " << pack.header.connID << " " << CWND << " " << SSTHRESH << " ACK" << endl;
             //Respond with ACKNOWLEDGEMENT - Send it Out!
             if (sendto(sockfd, sendAck, PACKETSIZE, 0, (struct sockaddr *)&serveraddr, sizeof(serveraddr)) < 0) {
                perror("ERROR: Sendto Failed!");
@@ -217,7 +225,7 @@ int main(int argc, char *argv[]) //Main Function w/ Arguments from Command Line
          unsigned char* hold  = createDataPacket(nextSeq, nextAck, clientID, payload, bytesRead);
          memcpy(sendPack, hold, PACKETSIZE);
          
-         std::cout << "SEND " << nextSeq << " " << nextAck << " " << clientID << " <CWND> <SS-THRESH> ACK" << std::endl;
+         std::cout << "SEND " << nextSeq << " " << nextAck << " " << clientID << " " << CWND << " " << SSTHRESH << " ACK" << std::endl;
          if (sendto(sockfd, sendPack, bytesRead + 12, 0, (struct sockaddr *)&serveraddr, sizeof(serveraddr)) < 0) {
             perror("ERROR: Sendto Failed!");
             return 1;
@@ -253,7 +261,7 @@ int main(int argc, char *argv[]) //Main Function w/ Arguments from Command Line
             //Create a New Packet
             packet recvPack(recvBuf, PACKETSIZE);
 
-            cout << "RECV " << recvPack.header.seq << " " << recvPack.header.ack << " " << recvPack.header.connID << " <CWND> <SS-THRESH> ACK" << endl;
+            cout << "RECV " << recvPack.header.seq << " " << recvPack.header.ack << " " << recvPack.header.connID << " " << CWND << " " << SSTHRESH << " ACK" << endl;
 
             // TODO: Check the ACK Number and Make Sure that it Matches what We Want
             //Check that the Connections are the Same!
@@ -267,7 +275,7 @@ int main(int argc, char *argv[]) //Main Function w/ Arguments from Command Line
                   nextAck = 0;
                } 
                else {
-                  cout << "DROP " << recvPack.header.seq << " " << recvPack.header.ack << " " << recvPack.header.connID << " <CWND> <SS-THRESH> ACK" << endl;
+                  cout << "DROP " << recvPack.header.seq << " " << recvPack.header.ack << " " << recvPack.header.connID << " " << CWND << " " << SSTHRESH << " ACK" << endl;
                   duplicate = true;
                }
             } 
@@ -297,7 +305,7 @@ int main(int argc, char *argv[]) //Main Function w/ Arguments from Command Line
    memcpy(sendFin, fin, PACKETSIZE);
 
    while (1) {
-      cout << "SEND " << nextSeq << " " << 0 << " " << clientID << " <CWND> <SS-THRESH> FIN" << endl;
+      cout << "SEND " << nextSeq << " " << 0 << " " << clientID << " " << CWND << " " << SSTHRESH << " FIN" << endl;
       if (sendto(sockfd, sendFin, HEADERSIZE, 0, (struct sockaddr *) &serveraddr, sizeof(serveraddr)) < 0) {
          cerr << "ERROR: Unable to Send FIN Packet" << endl;
          return 1;
@@ -320,7 +328,7 @@ int main(int argc, char *argv[]) //Main Function w/ Arguments from Command Line
          if (bytesRead > 0) {
             packet pack(buf, PACKETSIZE);
             if (pack.getAckFlag()) {
-               cout << "RECV " << pack.header.seq << " " << pack.header.ack << " " << pack.header.connID << " <CWND> <SS-THRESH> ACK" << endl;
+               cout << "RECV " << pack.header.seq << " " << pack.header.ack << " " << pack.header.connID << " " << CWND << " " << SSTHRESH << " ACK" << endl;
 
                //Get Address from Server Again
                struct sockaddr_in remaddr;
@@ -350,7 +358,7 @@ int main(int argc, char *argv[]) //Main Function w/ Arguments from Command Line
                      //Check for FIN from Server
                      packet pack(recvBuf, PACKETSIZE);
                      if (pack.getFinFlag()) {
-                        cout << "RECV " << pack.header.seq << " " << pack.header.ack << " " << pack.header.connID << " <CWND> <SS-THRESH> FIN" << endl;
+                        cout << "RECV " << pack.header.seq << " " << pack.header.ack << " " << pack.header.connID << " " << CWND << " " << SSTHRESH << " FIN" << endl;
                         
                         //Respond with ACK
                         unsigned char sendAck[PACKETSIZE] = {0};
@@ -358,7 +366,7 @@ int main(int argc, char *argv[]) //Main Function w/ Arguments from Command Line
                         memcpy(sendAck,  ack,  PACKETSIZE);
 
                         //Send the ACK Packet
-                        cout << "SEND " << nextSeq + 1 << " " << pack.header.seq + 1 << " " << clientID << " <CWND> <SS-THRESH> ACK" << endl;
+                        cout << "SEND " << nextSeq + 1 << " " << pack.header.seq + 1 << " " << clientID << " " << CWND << " " << SSTHRESH << " ACK" << endl;
                         if (sendto(sockfd, sendAck, HEADERSIZE, 0, (struct sockaddr *) &serveraddr, sizeof(serveraddr)) < 0) {
                            perror("ERROR: sendto Failed");
                            return 0;
