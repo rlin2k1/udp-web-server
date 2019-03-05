@@ -195,6 +195,7 @@ int main(int argc,char* argv[]){
             std::cerr << "RECEIVED SYN PACKET" << std::endl;
 				//save state
 				conn_state[num_conn] = pack.header.seq + 1;
+            std::cerr << "CONN_STATE[NUM_CONN]: " << conn_state[num_conn] << std::endl;
             std::cerr << "RECEIVED SYN SEQ: " << pack.header.seq << std::endl;
             std::cerr << "RECEIVED SYN ACK: " << pack.header.ack << std::endl;
 				
@@ -255,7 +256,9 @@ int main(int argc,char* argv[]){
 
                // CWIND STUFF
                int conn = (int) pack.header.connID;
+               std::cerr << "STEP 1 (CONN): " << conn << std::endl;
                if (conn_state[conn] == (int) pack.header.seq) {
+                  std::cerr << "STEP 2" << std::endl;
                   //do stuff as below 
                   // Try to copy into char buffer
                   char test[PAYLOADSIZE];

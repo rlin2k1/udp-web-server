@@ -109,12 +109,12 @@ int main(int argc,char* argv[]){
             //Create ack packet
             unsigned char sendAck[PACKETSIZE] = {};
             unsigned char* ack = createAck(pack.header.ack, pack.header.seq + 1, pack.header.connID);
-            printf("RECEIVED CONNID : %u\n", pack.header.connID);
             memcpy(sendAck,  ack,  PACKETSIZE);
+            std::cerr << "RECEIVED CONNID: " << pack.header.connID << std::endl;
 
             std::cout << "SEND " << pack.header.ack << " " << pack.header.seq + 1 << " " << pack.header.connID << " <CWND> <SS-THRESH> ACK" << std::endl;
             //Respond with Ack
-            if (sendto(sockfd, sendAck, HEADERSIZE, 0, (struct sockaddr *)&serveraddr, sizeof(serveraddr)) < 0) {
+            if (sendto(sockfd, sendAck, PACKETSIZE, 0, (struct sockaddr *)&serveraddr, sizeof(serveraddr)) < 0) {
                perror("sendto failed");
                return 0;
             }
