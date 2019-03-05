@@ -177,6 +177,21 @@ int main(int argc, char *argv[]) //Main Function w/ Arguments from Command Line
             packet pack(buf, PACKETSIZE);
             cout << "RECV " << pack.header.seq << " " << pack.header.ack << " " << pack.header.connID << " " << CWND << " " << SSTHRESH << " ACK SYN" << endl;
 
+            if(CWND < SSTHRESH){ //Slow Start!
+                CWND = CWND + 512;
+                if(CWND > 51200){
+                    CWND = 51200;
+                }
+                //SEND DATA FROM: AFTER THE LAST ACKNOWLEDGED BYTE TO: THE CONGESTION WINDOW SIZE(CWND). Can be split up to multiple packets.
+            }
+            else if(CWND >= SSTHRESH){ //Congestion Avoidance!
+                CWND = CWND + (512 * 512) / CWND;
+                if(CWND > 51200){
+                    CWND = 51200;
+                }
+                //SEND DATA FROM: AFTER THE LAST ACKNOWLEDGED BYTE TO: THE CONGESTION WINDOW SIZE(CWND). Can be split up to multiple packets.
+            }
+
             // Store Connetion ID into a Global Variable
             clientID = pack.header.connID;
             nextAck = pack.header.seq + 1;
@@ -206,29 +221,37 @@ int main(int argc, char *argv[]) //Main Function w/ Arguments from Command Line
    // Begin Transmission of the File!
    // ------------------------------------------------------------------------ //
    while (1) {
-      // Check for Duplicates
-      if (!duplicate) {
-         bytesRead = fread(payload, sizeof(char), PAYLOADSIZE, fs);
+      if (current_window < CWND) { //If current window size is filled up, we only wait for ACKS
+         send_size = CWND - current_window; //How many free bytes that we have to send
+         while (send_size > 512) { //We have to make sure payload size is less than 512
+            send_size = send_size - 512;
+         }
 
-         // Check for EOF
-         if (bytesRead == 0) 
-            break;
-         
-         //Initialize a New Packet to Send
-         char sendPack[PACKETSIZE];
-         memset(&sendPack, '\0', sizeof(sendPack));
+         // Check for Duplicates
+         if (!duplicate) { //TODO: WHY ! DUPLICATE???
+            bytesRead = fread(payload, sizeof(char), send_size, fs);
 
-         //Set Up a New Packet with PACKET STRUCT
-         packet pack;
-         pack.setSeq(nextSeq);
-         pack.setAck(nextAck);
-         unsigned char* hold  = createDataPacket(nextSeq, nextAck, clientID, payload, bytesRead);
-         memcpy(sendPack, hold, PACKETSIZE);
-         
-         std::cout << "SEND " << nextSeq << " " << nextAck << " " << clientID << " " << CWND << " " << SSTHRESH << " ACK" << std::endl;
-         if (sendto(sockfd, sendPack, bytesRead + 12, 0, (struct sockaddr *)&serveraddr, sizeof(serveraddr)) < 0) {
-            perror("ERROR: Sendto Failed!");
-            return 1;
+            // Check for EOF
+            if (bytesRead == 0) 
+               break;
+            
+            //Initialize a New Packet to Send
+            char sendPack[PACKETSIZE];
+            memset(&sendPack, '\0', sizeof(sendPack));
+
+            //Set Up a New Packet with PACKET STRUCT
+            packet pack;
+            pack.setSeq(nextSeq);
+            pack.setAck(nextAck);
+            unsigned char* hold  = createDataPacket(nextSeq, nextAck, clientID, payload, bytesRead);
+            memcpy(sendPack, hold, PACKETSIZE);
+            
+            std::cout << "SEND " << nextSeq << " " << nextAck << " " << clientID << " " << CWND << " " << SSTHRESH << " ACK" << std::endl;
+            if (sendto(sockfd, sendPack, bytesRead + 12, 0, (struct sockaddr *)&serveraddr, sizeof(serveraddr)) < 0) {
+               perror("ERROR: Sendto Failed!");
+               return 1;
+            }
+            current_window = current_window + send_size; //Update current_window
          }
       }
 
@@ -267,6 +290,22 @@ int main(int argc, char *argv[]) //Main Function w/ Arguments from Command Line
             //Check that the Connections are the Same!
             if (recvPack.header.connID == clientID) {
                if (recvPack.header.ack == nextSeq + bytesRead) {
+                  if(CWND < SSTHRESH){ //Slow Start!
+							CWND = CWND + 512;
+							if(CWND > 51200){
+								CWND = 51200;
+							}
+							//SEND DATA FROM: AFTER THE LAST ACKNOWLEDGED BYTE TO: THE CONGESTION WINDOW SIZE(CWND). Can be split up to multiple packets.
+							current_window = current_window - bytesRead;
+						}
+						else if(CWND >= SSTHRESH){ //Congestion Avoidance!
+							CWND = CWND + (512 * 512) / CWND;
+							if(CWND > 51200){
+								CWND = 51200;
+							}
+							//SEND DATA FROM: AFTER THE LAST ACKNOWLEDGED BYTE TO: THE CONGESTION WINDOW SIZE(CWND). Can be split up to multiple packets.
+							current_window = current_window - bytesRead;
+						}
                   // Set Duplicate to False
                   duplicate = false;
 
@@ -288,8 +327,11 @@ int main(int argc, char *argv[]) //Main Function w/ Arguments from Command Line
       else {
          cerr << "ERROR: ACKNOWLEDGEMENT TIMEOUT" << endl;
 
+         SSTHRESH = CWND/2;
+			CWND = 512;
          //Resend packet
-         fseek(fs, -bytesRead, SEEK_CUR);
+         fseek(fs, -current_window, SEEK_CUR);
+         current_window = 0;
 
          //Reset Duplicate
          duplicate = false;
@@ -329,6 +371,21 @@ int main(int argc, char *argv[]) //Main Function w/ Arguments from Command Line
             packet pack(buf, PACKETSIZE);
             if (pack.getAckFlag()) {
                cout << "RECV " << pack.header.seq << " " << pack.header.ack << " " << pack.header.connID << " " << CWND << " " << SSTHRESH << " ACK" << endl;
+
+               if(CWND < SSTHRESH){ //Slow Start!
+                  CWND = CWND + 512;
+                  if(CWND > 51200){
+                     CWND = 51200;
+                  }
+                  //SEND DATA FROM: AFTER THE LAST ACKNOWLEDGED BYTE TO: THE CONGESTION WINDOW SIZE(CWND). Can be split up to multiple packets.
+               }
+               else if(CWND >= SSTHRESH){ //Congestion Avoidance!
+                  CWND = CWND + (512 * 512) / CWND;
+                  if(CWND > 51200){
+                     CWND = 51200;
+                  }
+                  //SEND DATA FROM: AFTER THE LAST ACKNOWLEDGED BYTE TO: THE CONGESTION WINDOW SIZE(CWND). Can be split up to multiple packets.
+               }
 
                //Get Address from Server Again
                struct sockaddr_in remaddr;
