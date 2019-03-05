@@ -154,7 +154,7 @@ int main(int argc,char* argv[]){
          std::cout << "SENDING SEQ AS : " << pack.header.seq << "\n";
          std::cout << "SENDING ACK AS : " << pack.header.ack << "\n";
          std::cout << "SEND " << nextSeq << " " << nextAck << " " << clientID << " <CWND> <SS-THRESH> ACK" << std::endl;
-         if (sendto(sockfd, sendPack, PACKETSIZE, 0, (struct sockaddr *)&serveraddr, sizeof(serveraddr)) < 0) {
+         if (sendto(sockfd, sendPack, bytesRead + 12, 0, (struct sockaddr *)&serveraddr, sizeof(serveraddr)) < 0) {
             perror("sendto failed");
             return 1;
          }

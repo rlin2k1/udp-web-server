@@ -186,8 +186,10 @@ int main(int argc,char* argv[]){
 		bytesRead= recvfrom(sockfd, buf, PACKETSIZE, 0, (struct sockaddr *)&remaddr, &addrlen);
       //sleep(5);
 		if (bytesRead > 0) {
+         std::cerr << "BYTESREAD: " << bytesRead << std::endl;
 			//printf("received message: \"%s\"\nsize=%d\n", buf, bytesRead);
 			packet pack(buf, PACKETSIZE);
+         std::cerr << "SIZE OF: " << sizeof(pack) << std::endl;
 			printf("\nRECEIVED SEQ:%u, and ACK:%u\n\n", pack.header.seq, pack.header.ack);
 			//Create new connection
 			if (pack.getSynFlag()){
@@ -256,7 +258,8 @@ int main(int argc,char* argv[]){
 
                // CWIND STUFF
                int conn = (int) pack.header.connID;
-               std::cerr << "STEP 1 (CONN): " << conn << std::endl;
+               std::cerr << "EXPECTED CONN_STATE: " << conn_state[conn] << std::endl;
+               std::cerr << "RECEIVED SEQ: " << pack.header.seq << std::endl;
                if (conn_state[conn] == (int) pack.header.seq) {
                   std::cerr << "STEP 2" << std::endl;
                   //do stuff as below 
@@ -271,8 +274,9 @@ int main(int argc,char* argv[]){
                   std::cerr << "RECEIVED SEQ: " << pack.header.seq << std::endl;
                   
                   // Store into file
+                  std::cerr << "SIZEOF RETURNS: " << sizeof(pack) << std::endl;
                   int conn = (int) pack.header.connID;
-                  int fileBytesWritten = fwrite(test, sizeof(char), strlen(test), files[conn]);
+                  int fileBytesWritten = fwrite(test, sizeof(char), bytesRead - 12, files[conn]);
                   std::cerr << "BYTES WRITTEN: " << fileBytesWritten << std::endl;
                   std::cerr << "PAYLOAD SIZE: " << strlen(test) << std::endl;
 
