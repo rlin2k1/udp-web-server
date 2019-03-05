@@ -6,7 +6,7 @@ Author(s):
   Roy Lin, Grand Huynh, Julien Collins
 
 Date Created:
-  January 16th, 2019
+  March 1st, 2019
 */
 
 // -------------------------------------------------------------------------- //
@@ -144,6 +144,7 @@ int main(int argc, char *argv[]) //Main Function w/ Arguments from Command Line
    // ------------------------------------------------------------------------ //
    // THREE WAY HANDSHAKE!!!
    // ------------------------------------------------------------------------ //
+   cerr << "START THREE WAY HANDSHAKE-------------------------------------------" << endl;
    while (1) {	
       cout << "SEND " << 12345 << " " << 0 << " " << 0 << " <CWND> <SS-THRESH> SYN" << endl;
       //Send First HandShake to Server!
@@ -192,6 +193,7 @@ int main(int argc, char *argv[]) //Main Function w/ Arguments from Command Line
          return 1;
       }
    }
+   cerr << "BEGIN TRANSMISSION OF FILE------------------------------------------" << endl;
    // ------------------------------------------------------------------------ //
    // Begin Transmission of the File!
    // ------------------------------------------------------------------------ //
@@ -289,6 +291,7 @@ int main(int argc, char *argv[]) //Main Function w/ Arguments from Command Line
    // FIN FLAG - DONE SENDING FILE!
    // ------------------------------------------------------------------------ //
    //Create FIN Packet
+   cerr << "BEGIN FIN SHUTDOWN--------------------------------------------------" << endl;
    unsigned char sendFin[PACKETSIZE] = {0};
    unsigned char *fin = createFin(nextSeq, clientID);
    memcpy(sendFin, fin, PACKETSIZE);
