@@ -47,11 +47,10 @@ using namespace std; //Using the Standard Namespace
 
 #define MAXCLIENTS 30
 int num_conn = 1;
-uint32_t conn_state[MAXCLIENTS];
+int conn_state[MAXCLIENTS];
 FILE *files[MAXCLIENTS];
 clock_t times[MAXCLIENTS];
 bool is_valid[MAXCLIENTS] = {false};
-bool shut_down[MAXCLIENTS] = {false};
 
 string file_directory = "";
 char error[6] = "ERROR";
@@ -170,7 +169,6 @@ int main(int argc, char *argv[]) //Main Function w/ Arguments from Command Line
 		 if( ((clock() - times[i]) / CLOCKS_PER_SEC) > 10.0) {
 			string file_path = file_directory + "/" + to_string(i) + ".file"; //FileName
 			FILE *fd = freopen(file_path.c_str(), "w", files[i]); //Rewrite the File!
-			cout << fd << endl;
         	fwrite(error, 1, 6, fd); //Write the Error Message into the File
         	fflush(fd); //Make Sure Everything is Written to File!
 			is_valid[i] = false;
@@ -203,7 +201,6 @@ int main(int argc, char *argv[]) //Main Function w/ Arguments from Command Line
         FILE *fs = fopen(file_path.c_str(), "wb"); //Open the File for Modification
         files[num_conn] = fs;
 		  is_valid[num_conn] = true;
-		  shut_down[num_conn] = false;
         if (!files[num_conn]) {
             cerr << "ERROR: Could Not Open File" << endl;
             return 1;
@@ -232,7 +229,6 @@ int main(int argc, char *argv[]) //Main Function w/ Arguments from Command Line
         // Close File Descriptor
         int conn = (int)pack.header.connID;
         fclose(files[conn]);
-		  cout << "FILES " << files[conn] << endl;
 
         // ALso Create FIN?
         unsigned char sendFin[PACKETSIZE] = {0};
@@ -246,14 +242,13 @@ int main(int argc, char *argv[]) //Main Function w/ Arguments from Command Line
             return 1;
         }
 		  cerr << "FILE DONE TRANSMITTING---------------------------------------" << endl;
-		  shut_down[pack.header.connID] = true;
       } 
       else { //There is More Data: Save into File!
 		  if(is_valid[pack.header.connID] == false)
 			cerr << "ERROR: PACKET CONNECTION ID IS NOT VALID" << endl;
         if (!pack.getAckFlag()) { 	
           int conn = (int)pack.header.connID;
-          if (conn_state[conn] == pack.header.seq) {
+          if (conn_state[conn] == (int) pack.header.seq) {
             char test[PAYLOADSIZE];
             memset(&test, '\0', sizeof(test));
             memcpy(test, buf + 12, PAYLOADSIZE);
@@ -277,7 +272,7 @@ int main(int argc, char *argv[]) //Main Function w/ Arguments from Command Line
             conn_state[conn] = (int)pack.header.seq + fileBytesWritten;
 				times[conn] = clock();
           }
- 		  else if (conn_state[conn] > pack.header.seq ){
+ 		  else if (conn_state[conn]  > (int) pack.header.seq ){
 			   //Send an ACK
 				unsigned char sendAck[PACKETSIZE] = {};
 				unsigned char *ack = createAck(pack.header.ack, pack.header.seq + bytesRead - 12, pack.header.connID);
@@ -293,9 +288,6 @@ int main(int argc, char *argv[]) //Main Function w/ Arguments from Command Line
         } 
         else {
           cout << "RECV " << pack.header.seq << " " << pack.header.ack << " " << pack.header.connID << " ACK" << endl;
-			 if (shut_down[pack.header.connID]){
-				is_valid[pack.header.connID] = false;
-			 }
         }
       }
     }
