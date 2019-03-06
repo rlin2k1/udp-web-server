@@ -46,7 +46,7 @@ using namespace std; //Using the Standard Namespace
 
 #define MAXCLIENTS 30
 int num_conn = 1;
-int conn_state[MAXCLIENTS];
+uint32_t conn_state[MAXCLIENTS];
 FILE *files[MAXCLIENTS];
 
 string file_directory = "";
@@ -197,11 +197,12 @@ int main(int argc, char *argv[]) //Main Function w/ Arguments from Command Line
 
             // Create ACKNOWLEDGEMENT Packet to Send Back
             unsigned char sendAck[PACKETSIZE] = {0};
-            unsigned char *ack = createAck(4322, pack.header.seq + 1, pack.header.connID);
+            uint32_t client_ack = (pack.header.seq + 1 > MAXNUM) ? 0 : pack.header.seq + 1;
+            unsigned char *ack = createAck(4322, client_ack, pack.header.connID);
             memcpy(sendAck, ack, PACKETSIZE);
 
             // Send the ACKNOWLEDGEMENT Packet
-            cout << "SEND " << 4322 << " " << pack.header.seq + 1 << " " << pack.header.connID << " ACK" << endl;
+            cout << "SEND " << 4322 << " " << client_ack << " " << pack.header.connID << " ACK" << endl;
             if (sendto(sockfd, sendAck, HEADERSIZE, 0, (struct sockaddr *) &remaddr, addrlen) < 0) {
                perror("ERROR: FIN ACK FAILED!");
                return 1;
@@ -225,30 +226,38 @@ int main(int argc, char *argv[]) //Main Function w/ Arguments from Command Line
             cerr << "FILE DONE TRANSMITTING---------------------------------------" << endl;
          } else { //There is More Data: Save into File!
             if (!pack.getAckFlag()) {
-               int conn = (int)pack.header.connID;
-               if (conn_state[conn] == (int) pack.header.seq) {
+               // Packet variables
+               int conn = (int) pack.header.connID;
+
+               // Account for overlow
+               if (pack.header.seq == 0) {
+                  conn_state[conn] = 0;
+               }
+
+               // Check for correct nums
+               if (conn_state[conn] == pack.header.seq) {
                   char test[PAYLOADSIZE];
                   memset(&test, '\0', sizeof(test));
                   memcpy(test, buf + 12, PAYLOADSIZE);
 
-                  int conn = (int) pack.header.connID;
                   int fileBytesWritten = fwrite(test, sizeof(char), bytesRead - 12, files[conn]); //Write File
                   fflush(files[conn]); //Make Sure Everything is Written to File!
 
                   //Send an ACK
                   unsigned char sendAck[PACKETSIZE] = {};
-                  unsigned char *ack = createAck(pack.header.ack, pack.header.seq + fileBytesWritten, pack.header.connID);
+                  uint32_t client_ack = (pack.header.seq + fileBytesWritten > MAXNUM) ? 0 : pack.header.seq + fileBytesWritten;
+                  unsigned char *ack = createAck(pack.header.ack, client_ack, pack.header.connID);
                   memcpy(sendAck, ack, PACKETSIZE);
 
                   //Send the ACKNOWLEDGEMENT PACKET TO CLIENT
-                  cout << "SEND " << pack.header.ack << " " << pack.header.seq + fileBytesWritten << " " << pack.header.connID << " ACK" << endl;
+                  cout << "SEND " << pack.header.ack << " " << client_ack << " " << pack.header.connID << " ACK" << endl;
                   if (sendto(sockfd, sendAck, HEADERSIZE, 0, (struct sockaddr *) &remaddr, addrlen) < 0) {
                      perror("ERROR: sendto() Failed");
                      return 1;
                   }
                   //Update the Expected Sequence Number
-                  conn_state[conn] = (int)pack.header.seq + fileBytesWritten;
-               } else if (conn_state[conn]  > (int) pack.header.seq ){
+                  conn_state[conn] = pack.header.seq + fileBytesWritten;
+               } else if (conn_state[conn]  > pack.header.seq){
                   cout << "hello";
                   //Send an ACK
                   unsigned char sendAck[PACKETSIZE] = {};
@@ -256,7 +265,7 @@ int main(int argc, char *argv[]) //Main Function w/ Arguments from Command Line
                   memcpy(sendAck, ack, PACKETSIZE);
 
                   //Send the ACKNOWLEDGEMENT PACKET TO CLIENT
-                  cout << "SEND " << pack.header.ack << " " << conn_state[conn]  << " " << pack.header.connID << " ACK" << endl;
+                  cout << "SEND " << pack.header.ack << " " << conn_state[conn] << " " << pack.header.connID << " ACK" << endl;
                   if (sendto(sockfd, sendAck, HEADERSIZE, 0, (struct sockaddr *) &remaddr, addrlen) < 0) {
                      perror("ERROR: sendto() Failed");
                      return 1;
