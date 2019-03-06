@@ -213,6 +213,7 @@ int main(int argc, char *argv[]) //Main Function w/ Arguments from Command Line
          }
 
          // Check for Duplicates
+         // TODO: check for dup
          if (!duplicate) { //TODO: WHY ! DUPLICATE???
             bytesRead = fread(payload, sizeof(char), send_size, fs);
             // Check for EOF
@@ -302,6 +303,7 @@ int main(int argc, char *argv[]) //Main Function w/ Arguments from Command Line
                else {
                   cout << "DROP " << recvPack.header.seq % MAXNUM << " " << recvPack.header.ack % MAXNUM << " " << recvPack.header.connID << " " << CWND << " " << SSTHRESH << " ACK" << endl;
                   duplicate = true;
+                  prev_dup = true;
                }
             } 
             else {
