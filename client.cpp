@@ -160,7 +160,7 @@ int main(int argc, char *argv[]) //Main Function w/ Arguments from Command Line
          perror("ERROR: Sendto Failed!");
          return 0;
       }
-      int result = poll(fds, 1, 15000); //Poll 15 Seconds for Response
+      int result = poll(fds, 1, 10000); //Poll 15 Seconds for Response
       if (result < 0) {
          cerr << "ERROR: Unable to Create Poll" << endl;
          return 1;
@@ -215,7 +215,6 @@ int main(int argc, char *argv[]) //Main Function w/ Arguments from Command Line
          // Check for Duplicates
          if (!duplicate) { //TODO: WHY ! DUPLICATE???
             bytesRead = fread(payload, sizeof(char), send_size, fs);
-            cerr << "sendsize: " << send_size << ", " <<bytesRead ;
             // Check for EOF
             if (bytesRead == 0) 
                break;
@@ -231,7 +230,7 @@ int main(int argc, char *argv[]) //Main Function w/ Arguments from Command Line
             unsigned char* hold  = createDataPacket(nextSeq, nextAck, clientID, payload, bytesRead);
             memcpy(sendPack, hold, PACKETSIZE);
             
-            std::cout << "SEND " << nextSeq << " " << nextAck << " " << clientID << " " << CWND << " " << SSTHRESH << " ACK" << std::endl;
+            std::cout << "SEND " << nextSeq << " " << 0 << " " << clientID << " " << CWND << " " << SSTHRESH << std::endl;
             if (sendto(sockfd, sendPack, bytesRead + 12, 0, (struct sockaddr *)&serveraddr, sizeof(serveraddr)) < 0) {
                perror("ERROR: Sendto Failed!");
                return 1;
@@ -276,8 +275,7 @@ int main(int argc, char *argv[]) //Main Function w/ Arguments from Command Line
             if (recvPack.header.connID == clientID) {
             //cout << "recvPack.header.ack: " << recvPack.header.ack << ": " << nextSeq + bytesRead << "\n";   
 			 //cout << "free space : " << CWND - current_window;
-			   if (recvPack.header.ack >= nextSeq + bytesRead) {
-				  
+			   if (recvPack.header.ack >= nextSeq + bytesRead || recvPack.header.ack == 0) {
                   if(CWND < SSTHRESH){ //Slow Start!
 							CWND = CWND + 512;
 							if(CWND > 51200){
@@ -392,11 +390,13 @@ int main(int argc, char *argv[]) //Main Function w/ Arguments from Command Line
                         
                         //Respond with ACK
                         unsigned char sendAck[PACKETSIZE] = {0};
-                        unsigned char* ack = createAck(nextSeq + 1, pack.header.seq + 1, clientID);
+                        uint32_t server_seq = (nextSeq + 1 > MAXNUM) ? 0 : nextSeq + 1;
+                        uint32_t server_ack = (pack.header.seq + 1 > MAXNUM) ? 0 : pack.header.seq + 1;
+                        unsigned char* ack = createAck(server_seq, server_ack, clientID);
                         memcpy(sendAck,  ack,  PACKETSIZE);
 
                         //Send the ACK Packet
-                        cout << "SEND " << nextSeq + 1 << " " << pack.header.seq + 1 << " " << clientID << " " << CWND << " " << SSTHRESH << " ACK" << endl;
+                        cout << "SEND " << server_seq << " " << server_ack << " " << clientID << " " << CWND << " " << SSTHRESH << " ACK" << endl;
                         if (sendto(sockfd, sendAck, HEADERSIZE, 0, (struct sockaddr *) &serveraddr, sizeof(serveraddr)) < 0) {
                            perror("ERROR: sendto Failed");
                            return 0;

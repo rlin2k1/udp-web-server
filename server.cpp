@@ -47,7 +47,7 @@ using namespace std; //Using the Standard Namespace
 
 #define MAXCLIENTS 30
 int num_conn = 1;
-int conn_state[MAXCLIENTS];
+uint32_t conn_state[MAXCLIENTS];
 FILE *files[MAXCLIENTS];
 clock_t times[MAXCLIENTS];
 bool is_valid[MAXCLIENTS] = {false};
