@@ -242,7 +242,7 @@ int main(int argc, char *argv[]) //Main Function w/ Arguments from Command Line
                return 1;
             }
             cerr << "FILE DONE TRANSMITTING---------------------------------------" << endl;
-				shut_down[pack.header.connID] = true;
+            shut_down[pack.header.connID] = true;
          } else { //There is More Data: Save into File!
             if(is_valid[pack.header.connID] == false)
                cerr << "ERROR: PACKET CONNECTION ID IS NOT VALID" << endl;
@@ -252,6 +252,7 @@ int main(int argc, char *argv[]) //Main Function w/ Arguments from Command Line
 
                // Check for correct nums
                if (conn_state[conn] % MAXNUM == pack.header.seq % MAXNUM) {
+                  cout << "RECV " << pack.header.seq % MAXNUM << " " << pack.header.ack % MAXNUM << " " << pack.header.connID << endl;
                   char test[PAYLOADSIZE];
                   memset(&test, '\0', sizeof(test));
                   memcpy(test, buf + 12, PAYLOADSIZE);
@@ -292,9 +293,9 @@ int main(int argc, char *argv[]) //Main Function w/ Arguments from Command Line
                }
             } else {
                cout << "RECV " << pack.header.seq % MAXNUM << " " << pack.header.ack % MAXNUM << " " << pack.header.connID << " ACK" << endl;
-					if(shut_down[pack.header.connID])
-						is_valid[pack.header.connID] = false;
-				}
+               if(shut_down[pack.header.connID])
+                  is_valid[pack.header.connID] = false;
+            }
          }
       }
    }
