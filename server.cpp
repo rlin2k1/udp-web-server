@@ -229,13 +229,8 @@ int main(int argc, char *argv[]) //Main Function w/ Arguments from Command Line
                // Packet variables
                int conn = (int) pack.header.connID;
 
-               // Account for overlow
-               if (pack.header.seq == 0) {
-                  conn_state[conn] = 0;
-               }
-
                // Check for correct nums
-               if (conn_state[conn] == pack.header.seq) {
+               if (conn_state[conn] % MAXNUM == pack.header.seq % MAXNUM) {
                   char test[PAYLOADSIZE];
                   memset(&test, '\0', sizeof(test));
                   memcpy(test, buf + 12, PAYLOADSIZE);
@@ -258,7 +253,6 @@ int main(int argc, char *argv[]) //Main Function w/ Arguments from Command Line
                   //Update the Expected Sequence Number
                   conn_state[conn] = (pack.header.seq + fileBytesWritten) % MAXNUM;
                } else if (conn_state[conn] % MAXNUM > pack.header.seq % MAXNUM){
-                  cout << "hello";
                   //Send an ACK
                   unsigned char sendAck[PACKETSIZE] = {};
                   unsigned char *ack = createAck(4322, conn_state[conn] % MAXNUM, pack.header.connID);
