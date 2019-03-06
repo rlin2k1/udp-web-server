@@ -224,13 +224,13 @@ int main(int argc, char *argv[]) //Main Function w/ Arguments from Command Line
       if (current_window < CWND) { //If current window size is filled up, we only wait for ACKS
          send_size = CWND - current_window; //How many free bytes that we have to send
          while (send_size > 512) { //We have to make sure payload size is less than 512
-            send_size = send_size - 512;
+            send_size = 512;
          }
 
          // Check for Duplicates
          if (!duplicate) { //TODO: WHY ! DUPLICATE???
             bytesRead = fread(payload, sizeof(char), send_size, fs);
-
+			cout << "sendsize: " << send_size << ", " <<bytesRead ;
             // Check for EOF
             if (bytesRead == 0) 
                break;
@@ -284,12 +284,15 @@ int main(int argc, char *argv[]) //Main Function w/ Arguments from Command Line
             //Create a New Packet
             packet recvPack(recvBuf, PACKETSIZE);
 
-            cout << "RECV " << recvPack.header.seq << " " << recvPack.header.ack << " " << recvPack.header.connID << " " << CWND << " " << SSTHRESH << " ACK" << endl;
+            cout << "RECV " << recvPack.header.seq << " " << recvPack.header.ack << " " << recvPack.header.connID << " " << CWND << " " << SSTHRESH << " ACK" << endl ;
 
             // TODO: Check the ACK Number and Make Sure that it Matches what We Want
             //Check that the Connections are the Same!
             if (recvPack.header.connID == clientID) {
-               if (recvPack.header.ack == nextSeq + bytesRead) {
+            //cout << "recvPack.header.ack: " << recvPack.header.ack << ": " << nextSeq + bytesRead << "\n";   
+			 //cout << "free space : " << CWND - current_window;
+			   if (recvPack.header.ack >= nextSeq + bytesRead) {
+				  
                   if(CWND < SSTHRESH){ //Slow Start!
 							CWND = CWND + 512;
 							if(CWND > 51200){

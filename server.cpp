@@ -252,18 +252,22 @@ int main(int argc, char *argv[]) //Main Function w/ Arguments from Command Line
             conn_state[conn] = (int)pack.header.seq + fileBytesWritten;
           }
  		  else if (conn_state[conn]  > (int) pack.header.seq ){
+				cout << "hello";
 			     //Send an ACK
 				unsigned char sendAck[PACKETSIZE] = {};
-				unsigned char *ack = createAck(pack.header.ack, pack.header.seq + bytesRead - 12, pack.header.connID);
+				unsigned char *ack = createAck(pack.header.ack, conn_state[conn], pack.header.connID);
 				memcpy(sendAck, ack, PACKETSIZE);
 				
 				//Send the ACKNOWLEDGEMENT PACKET TO CLIENT
-				cout << "SEND " << pack.header.ack << " " << pack.header.seq + bytesRead - 12 << " " << pack.header.connID << " ACK" << endl;
+				cout << "SEND " << pack.header.ack << " " << conn_state[conn]  << " " << pack.header.connID << " ACK" << endl;
 				if (sendto(sockfd, sendAck, HEADERSIZE, 0, (struct sockaddr *) &remaddr, addrlen) < 0) {
 				  perror("ERROR: sendto() Failed");
 				  return 1;
 				}
 			
+		  }
+		  else {
+			  cout << (int) pack.header.seq << ":" << conn_state[conn] << "\n";
 		  }
         } 
 		
