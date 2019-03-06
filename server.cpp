@@ -246,11 +246,11 @@ int main(int argc, char *argv[]) //Main Function w/ Arguments from Command Line
                   //Send an ACK
                   unsigned char sendAck[PACKETSIZE] = {};
                   uint32_t client_ack = (pack.header.seq + fileBytesWritten > MAXNUM) ? 0 : pack.header.seq + fileBytesWritten;
-                  unsigned char *ack = createAck(pack.header.ack, client_ack, pack.header.connID);
+                  unsigned char *ack = createAck(4322, client_ack, pack.header.connID);
                   memcpy(sendAck, ack, PACKETSIZE);
 
                   //Send the ACKNOWLEDGEMENT PACKET TO CLIENT
-                  cout << "SEND " << pack.header.ack << " " << client_ack << " " << pack.header.connID << " ACK" << endl;
+                  cout << "SEND " << 4322 << " " << client_ack << " " << pack.header.connID << " ACK" << endl;
                   if (sendto(sockfd, sendAck, HEADERSIZE, 0, (struct sockaddr *) &remaddr, addrlen) < 0) {
                      perror("ERROR: sendto() Failed");
                      return 1;
@@ -261,11 +261,11 @@ int main(int argc, char *argv[]) //Main Function w/ Arguments from Command Line
                   cout << "hello";
                   //Send an ACK
                   unsigned char sendAck[PACKETSIZE] = {};
-                  unsigned char *ack = createAck(pack.header.ack, conn_state[conn], pack.header.connID);
+                  unsigned char *ack = createAck(4322, conn_state[conn], pack.header.connID);
                   memcpy(sendAck, ack, PACKETSIZE);
 
                   //Send the ACKNOWLEDGEMENT PACKET TO CLIENT
-                  cout << "SEND " << pack.header.ack << " " << conn_state[conn] << " " << pack.header.connID << " ACK" << endl;
+                  cout << "SEND " << 4322 << " " << conn_state[conn] << " " << pack.header.connID << " ACK" << endl;
                   if (sendto(sockfd, sendAck, HEADERSIZE, 0, (struct sockaddr *) &remaddr, addrlen) < 0) {
                      perror("ERROR: sendto() Failed");
                      return 1;
