@@ -230,7 +230,7 @@ int main(int argc, char *argv[]) //Main Function w/ Arguments from Command Line
             unsigned char* hold  = createDataPacket(nextSeq, nextAck, clientID, payload, bytesRead);
             memcpy(sendPack, hold, PACKETSIZE);
             
-            std::cout << "SEND " << nextSeq << " " << nextAck << " " << clientID << " " << CWND << " " << SSTHRESH << " ACK" << std::endl;
+            std::cout << "SEND " << nextSeq << " " << 0 << " " << clientID << " " << CWND << " " << SSTHRESH << std::endl;
             if (sendto(sockfd, sendPack, bytesRead + 12, 0, (struct sockaddr *)&serveraddr, sizeof(serveraddr)) < 0) {
                perror("ERROR: Sendto Failed!");
                return 1;
