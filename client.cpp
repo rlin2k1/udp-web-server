@@ -223,14 +223,14 @@ int main(int argc, char *argv[]) //Main Function w/ Arguments from Command Line
    while (1) {
       if (current_window < CWND) { //If current window size is filled up, we only wait for ACKS
          send_size = CWND - current_window; //How many free bytes that we have to send
-         while (send_size > 512) { //We have to make sure payload size is less than 512
+         if (send_size > 512) { //We have to make sure payload size is less than 512
             send_size = 512;
          }
 
          // Check for Duplicates
          if (!duplicate) { //TODO: WHY ! DUPLICATE???
             bytesRead = fread(payload, sizeof(char), send_size, fs);
-			cout << "sendsize: " << send_size << ", " <<bytesRead ;
+            cerr << "sendsize: " << send_size << ", " <<bytesRead ;
             // Check for EOF
             if (bytesRead == 0) 
                break;
