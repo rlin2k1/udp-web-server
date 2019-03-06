@@ -13,7 +13,7 @@ Date Created:
 #define PACKETSIZE 524
 #define PAYLOADSIZE 512
 #define HEADERSIZE 12
-#define MAXNUM 102400
+#define MAXNUM 102401
 
 struct packet_header {
 	uint32_t  seq;

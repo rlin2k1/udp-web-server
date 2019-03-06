@@ -225,12 +225,12 @@ int main(int argc, char *argv[]) //Main Function w/ Arguments from Command Line
 
             //Set Up a New Packet with PACKET STRUCT
             packet pack;
-            pack.setSeq(nextSeq);
-            pack.setAck(nextAck);
-            unsigned char* hold  = createDataPacket(nextSeq, nextAck, clientID, payload, bytesRead);
+            pack.setSeq(nextSeq % MAXNUM);
+            pack.setAck(nextAck % MAXNUM);
+            unsigned char* hold  = createDataPacket(nextSeq % MAXNUM, nextAck % MAXNUM, clientID, payload, bytesRead);
             memcpy(sendPack, hold, PACKETSIZE);
             
-            std::cout << "SEND " << nextSeq << " " << 0 << " " << clientID << " " << CWND << " " << SSTHRESH << std::endl;
+            std::cout << "SEND " << nextSeq % MAXNUM << " " << 0 << " " << clientID << " " << CWND << " " << SSTHRESH << std::endl;
             if (sendto(sockfd, sendPack, bytesRead + 12, 0, (struct sockaddr *)&serveraddr, sizeof(serveraddr)) < 0) {
                perror("ERROR: Sendto Failed!");
                return 1;
@@ -268,14 +268,14 @@ int main(int argc, char *argv[]) //Main Function w/ Arguments from Command Line
             //Create a New Packet
             packet recvPack(recvBuf, PACKETSIZE);
 
-            cout << "RECV " << recvPack.header.seq << " " << recvPack.header.ack << " " << recvPack.header.connID << " " << CWND << " " << SSTHRESH << " ACK" << endl ;
+            cout << "RECV " << recvPack.header.seq % MAXNUM << " " << recvPack.header.ack % MAXNUM << " " << recvPack.header.connID << " " << CWND << " " << SSTHRESH << " ACK" << endl ;
 
             // TODO: Check the ACK Number and Make Sure that it Matches what We Want
             //Check that the Connections are the Same!
             if (recvPack.header.connID == clientID) {
             //cout << "recvPack.header.ack: " << recvPack.header.ack << ": " << nextSeq + bytesRead << "\n";   
 			 //cout << "free space : " << CWND - current_window;
-			   if (recvPack.header.ack >= nextSeq + bytesRead || recvPack.header.ack == 0) {
+			   if ((recvPack.header.ack % MAXNUM) >= (nextSeq + bytesRead) % MAXNUM) {
                   if(CWND < SSTHRESH){ //Slow Start!
 							CWND = CWND + 512;
 							if(CWND > 51200){
@@ -296,11 +296,11 @@ int main(int argc, char *argv[]) //Main Function w/ Arguments from Command Line
                   duplicate = false;
 
                   // Set Next Seq to the Acknowledgement Number of the Server
-                  nextSeq = recvPack.header.ack;
+                  nextSeq = recvPack.header.ack % MAXNUM;
                   nextAck = 0;
                } 
                else {
-                  cout << "DROP " << recvPack.header.seq << " " << recvPack.header.ack << " " << recvPack.header.connID << " " << CWND << " " << SSTHRESH << " ACK" << endl;
+                  cout << "DROP " << recvPack.header.seq % MAXNUM << " " << recvPack.header.ack % MAXNUM << " " << recvPack.header.connID << " " << CWND << " " << SSTHRESH << " ACK" << endl;
                   duplicate = true;
                }
             } 
@@ -333,7 +333,7 @@ int main(int argc, char *argv[]) //Main Function w/ Arguments from Command Line
    memcpy(sendFin, fin, PACKETSIZE);
 
    while (1) {
-      cout << "SEND " << nextSeq << " " << 0 << " " << clientID << " " << CWND << " " << SSTHRESH << " FIN" << endl;
+      cout << "SEND " << nextSeq % MAXNUM << " " << 0 << " " << clientID << " " << CWND << " " << SSTHRESH << " FIN" << endl;
       if (sendto(sockfd, sendFin, HEADERSIZE, 0, (struct sockaddr *) &serveraddr, sizeof(serveraddr)) < 0) {
          cerr << "ERROR: Unable to Send FIN Packet" << endl;
          return 1;
@@ -356,7 +356,7 @@ int main(int argc, char *argv[]) //Main Function w/ Arguments from Command Line
          if (bytesRead > 0) {
             packet pack(buf, PACKETSIZE);
             if (pack.getAckFlag()) {
-               cout << "RECV " << pack.header.seq << " " << pack.header.ack << " " << pack.header.connID << " " << CWND << " " << SSTHRESH << " ACK" << endl;
+               cout << "RECV " << pack.header.seq % MAXNUM << " " << pack.header.ack % MAXNUM << " " << pack.header.connID << " " << CWND << " " << SSTHRESH << " ACK" << endl;
 
                //Get Address from Server Again
                struct sockaddr_in remaddr;
@@ -386,12 +386,12 @@ int main(int argc, char *argv[]) //Main Function w/ Arguments from Command Line
                      //Check for FIN from Server
                      packet pack(recvBuf, PACKETSIZE);
                      if (pack.getFinFlag()) {
-                        cout << "RECV " << pack.header.seq << " " << pack.header.ack << " " << pack.header.connID << " " << CWND << " " << SSTHRESH << " FIN" << endl;
+                        cout << "RECV " << pack.header.seq % MAXNUM << " " << pack.header.ack % MAXNUM << " " << pack.header.connID << " " << CWND << " " << SSTHRESH << " FIN" << endl;
                         
                         //Respond with ACK
                         unsigned char sendAck[PACKETSIZE] = {0};
-                        uint32_t server_seq = (nextSeq + 1 > MAXNUM) ? 0 : nextSeq + 1;
-                        uint32_t server_ack = (pack.header.seq + 1 > MAXNUM) ? 0 : pack.header.seq + 1;
+                        uint32_t server_seq = (nextSeq + 1) % MAXNUM; //(nextSeq + 1 > MAXNUM) ? 0 : nextSeq + 1;
+                        uint32_t server_ack = (pack.header.seq + 1) % MAXNUM; //(pack.header.seq + 1 > MAXNUM) ? 0 : pack.header.seq + 1;
                         unsigned char* ack = createAck(server_seq, server_ack, clientID);
                         memcpy(sendAck,  ack,  PACKETSIZE);
 
