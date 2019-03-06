@@ -196,6 +196,7 @@ int main(int argc, char *argv[]) //Main Function w/ Arguments from Command Line
 
             //Create File Handler
             string file_path = file_directory + "/" + to_string(num_conn) + ".file"; //FileName
+            times[num_conn] = clock();
             FILE *fs = fopen(file_path.c_str(), "wb"); //Open the File for Modification
             files[num_conn] = fs;
             is_valid[num_conn] = true;
