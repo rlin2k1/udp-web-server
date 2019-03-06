@@ -1,14 +1,14 @@
 /* server.cpp
-The server listens for TCP connections and saves all the received data from
-the client in a file.
+   The server listens for TCP connections and saves all the received data from
+   the client in a file.
 
 Notes: Mainly use select() for 15 Second Timer!
 
 Author(s):
-  Roy Lin, Grand Huynh, Julien Collins
+Roy Lin, Grand Huynh, Julien Collins
 
 Date Created:
-  March 1st, 2019
+March 1st, 2019
 */
 
 // -------------------------------------------------------------------------- //
@@ -53,72 +53,72 @@ string file_directory = "";
 char error[6] = "ERROR";
 
 void sigquit_handler(int signum) {
-  cerr << "ERROR: Received SIGQUIT Signal" << endl;
-  exit(0);
+   cerr << "ERROR: Received SIGQUIT Signal" << endl;
+   exit(0);
 }
 
 void sigterm_handler(int signum) {
-  cerr << "ERROR: Received SIGTERM Signal" << endl;
-  exit(0);
+   cerr << "ERROR: Received SIGTERM Signal" << endl;
+   exit(0);
 }
 
 int main(int argc, char *argv[]) //Main Function w/ Arguments from Command Line
 {
-  // ------------------------------------------------------------------------ //
-  // Signal Handling
-  // ------------------------------------------------------------------------ //
-  signal(SIGQUIT, sigquit_handler);
-  signal(SIGTERM, sigterm_handler);
-  int port_number = -1; //Sentinel
-  // ------------------------------------------------------------------------ //
-  // Error Handling from Arguments
-  // ------------------------------------------------------------------------ //
-  if(argc != 3) {
-    cerr << "ERROR: Need 2 Arguments: Port Number and File Directory" << endl;
-    exit(3);
-  }
-  try{
-    port_number = stoi(argv[1]); //The Port Number is the First Argument
-  }
-  catch(std::invalid_argument& e) {
-    cerr << "ERROR: Invalid Port. Please Enter Valid Port NUMBER" << endl;
-    exit(3);
-  }
-  if(port_number <= 1023){
-    cerr << "ERROR: Reserved Port Number Detected. Please Specify a Port Number"
-      << " Greater than 1023" << endl;
-    exit(3);
-  }
-  file_directory = argv[2]; //Assume Directory is Always Correct-2nd Arg
-  mkdir(file_directory.c_str(), 0777); //Will Always Have Permissions
+   // ------------------------------------------------------------------------ //
+   // Signal Handling
+   // ------------------------------------------------------------------------ //
+   signal(SIGQUIT, sigquit_handler);
+   signal(SIGTERM, sigterm_handler);
+   int port_number = -1; //Sentinel
+   // ------------------------------------------------------------------------ //
+   // Error Handling from Arguments
+   // ------------------------------------------------------------------------ //
+   if(argc != 3) {
+      cerr << "ERROR: Need 2 Arguments: Port Number and File Directory" << endl;
+      exit(3);
+   }
+   try{
+      port_number = stoi(argv[1]); //The Port Number is the First Argument
+   }
+   catch(std::invalid_argument& e) {
+      cerr << "ERROR: Invalid Port. Please Enter Valid Port NUMBER" << endl;
+      exit(3);
+   }
+   if(port_number <= 1023){
+      cerr << "ERROR: Reserved Port Number Detected. Please Specify a Port Number"
+         << " Greater than 1023" << endl;
+      exit(3);
+   }
+   file_directory = argv[2]; //Assume Directory is Always Correct-2nd Arg
+   mkdir(file_directory.c_str(), 0777); //Will Always Have Permissions
 
-  //cerr << "Port Number to Be Connected to: " << port_number << endl;
-  //cerr << "Directory to Save Transferred File in: " << file_directory << endl;
-  
-  // ------------------------------------------------------------------------ //
-  // Create a Socket using TCP IP
-  // ------------------------------------------------------------------------ //
-  int sockfd; //Socket File Descriptor
-  struct addrinfo hints, *servinfo, *p; //For getaddrinfo()
-  int rv; //Check Return Value of getaddrinfo()
+   //cerr << "Port Number to Be Connected to: " << port_number << endl;
+   //cerr << "Directory to Save Transferred File in: " << file_directory << endl;
 
-  memset(&hints, 0, sizeof hints); //Initialize Hints
-  hints.ai_family = AF_INET; // AF_INET for IPv4
-  hints.ai_socktype = SOCK_DGRAM;
-  hints.ai_flags = AI_PASSIVE; // Use My IP address
+   // ------------------------------------------------------------------------ //
+   // Create a Socket using TCP IP
+   // ------------------------------------------------------------------------ //
+   int sockfd; //Socket File Descriptor
+   struct addrinfo hints, *servinfo, *p; //For getaddrinfo()
+   int rv; //Check Return Value of getaddrinfo()
 
-  if ((rv = getaddrinfo(NULL, argv[1], &hints, &servinfo)) != 0) { //GetAddrInfo
-    cerr << "ERROR: Get Address Info Failed" << endl;
-    exit(3);
-  }
+   memset(&hints, 0, sizeof hints); //Initialize Hints
+   hints.ai_family = AF_INET; // AF_INET for IPv4
+   hints.ai_socktype = SOCK_DGRAM;
+   hints.ai_flags = AI_PASSIVE; // Use My IP address
 
-  // Loop through all results and try to bind
-  for(p = servinfo; p != NULL; p = p->ai_next) {
+   if ((rv = getaddrinfo(NULL, argv[1], &hints, &servinfo)) != 0) { //GetAddrInfo
+      cerr << "ERROR: Get Address Info Failed" << endl;
+      exit(3);
+   }
+
+   // Loop through all results and try to bind
+   for(p = servinfo; p != NULL; p = p->ai_next) {
       //sockfd contains the file descriptor to access the Socket
       if ((sockfd = socket(p->ai_family, p->ai_socktype, p->ai_protocol)) == -1) 
       { //Create Socket for the Result
-          cerr << "ERROR: Failed to Create Socket" << endl;
-          continue; //On to the Next Result
+         cerr << "ERROR: Failed to Create Socket" << endl;
+         continue; //On to the Next Result
       }
       // -------------------------------------------------------------------- //
       // Allow Others to Reuse the Address - Error Handling
@@ -126,157 +126,153 @@ int main(int argc, char *argv[]) //Main Function w/ Arguments from Command Line
       int yes = 1;
       if (setsockopt(sockfd, SOL_SOCKET, SO_REUSEADDR, &yes, sizeof(int)) == -1) 
       {
-        cerr << "ERROR: Set Socket Options Failed" << endl;
+         cerr << "ERROR: Set Socket Options Failed" << endl;
       }
       fcntl(sockfd, F_SETFL, O_NONBLOCK);
       // -------------------------------------------------------------------- //
       // Bind Address to Socket
       // -------------------------------------------------------------------- //
       if (bind(sockfd, p->ai_addr, p->ai_addrlen) == -1) {
-          cerr << "ERROR: Error Binding the Port and the HostName/IP Address" <<
-          "Together" << endl;
-          close(sockfd); //Finally Close the Connection
-          continue;
+         cerr << "ERROR: Error Binding the Port and the HostName/IP Address" <<
+            "Together" << endl;
+         close(sockfd); //Finally Close the Connection
+         continue;
       }
 
       break; // Must have connected successfully
-  }
+   }
 
-  if (p == NULL) {
+   if (p == NULL) {
       // End of List with No Successful Bind
       cerr << "ERROR: Failed to Bind Socket" << endl;
       exit(3);
-  }
+   }
 
-  freeaddrinfo(servinfo); // Deallocate Structure
+   freeaddrinfo(servinfo); // Deallocate Structure
 
-  //Address of Client Connection
-  struct sockaddr_in remaddr;
-	socklen_t addrlen = sizeof(remaddr);
+   //Address of Client Connection
+   struct sockaddr_in remaddr;
+   socklen_t addrlen = sizeof(remaddr);
 
-  unsigned char buf[PACKETSIZE] = {0};
-  int bytesRead = -1;
-  // ------------------------------------------------------------------------ //
-  // Begin Getting Data from Clients
-  // ------------------------------------------------------------------------ //
-  while (1) {
-    memset(buf, '\0', sizeof(buf)); //Clear the Receiving Buffer
-    bytesRead = recvfrom(sockfd, buf, PACKETSIZE, 0, (struct sockaddr *)&remaddr, &addrlen);
+   unsigned char buf[PACKETSIZE] = {0};
+   int bytesRead = -1;
+   // ------------------------------------------------------------------------ //
+   // Begin Getting Data from Clients
+   // ------------------------------------------------------------------------ //
+   while (1) {
+      memset(buf, '\0', sizeof(buf)); //Clear the Receiving Buffer
+      bytesRead = recvfrom(sockfd, buf, PACKETSIZE, 0, (struct sockaddr *)&remaddr, &addrlen);
 
-    if (bytesRead > 0) {
-      packet pack(buf, PACKETSIZE); //Create a New Packet that Just Arrived
-      if (pack.getSynFlag()){ //Create New Connection if Never Seen Before
-        cout << "RECV " << pack.header.seq << " " << pack.header.ack << " " << pack.header.connID << " SYN" << endl;
-        conn_state[num_conn] = pack.header.seq + 1; //Save Expected Sequence Number
-        
-        //Respond to Create an SYN + ACKNOWLEDGEMENT PACKET
-        unsigned char sendSynAck[PACKETSIZE] = {0};
-        unsigned char* synAck = createSynAck((uint16_t)num_conn);
-        memcpy(sendSynAck, synAck, PACKETSIZE);
-        
-        //Send out Syn + Ack PACKET
-        cout << "SEND " << 4321 << " " << 12346 << " " << num_conn << " ACK SYN" << endl;
-        if (sendto(sockfd, sendSynAck, HEADERSIZE, 0, (struct sockaddr *)&remaddr, addrlen) < 0) {
-          perror("ERROR: sendto() Failed");
-          return 0;
-        }
+      if (bytesRead > 0) {
+         packet pack(buf, PACKETSIZE); //Create a New Packet that Just Arrived
+         if (pack.getSynFlag()){ //Create New Connection if Never Seen Before
+            cout << "RECV " << pack.header.seq << " " << pack.header.ack << " " << pack.header.connID << " SYN" << endl;
+            conn_state[num_conn] = pack.header.seq + 1; //Save Expected Sequence Number
 
-        //Create File Handler
-        string file_path = file_directory + "/" + to_string(num_conn) + ".file"; //FileName
-        FILE *fs = fopen(file_path.c_str(), "wb"); //Open the File for Modification
-        files[num_conn] = fs;
-        if (!files[num_conn]) {
-            cerr << "ERROR: Could Not Open File" << endl;
-            return 1;
-        }
+            //Respond to Create an SYN + ACKNOWLEDGEMENT PACKET
+            unsigned char sendSynAck[PACKETSIZE] = {0};
+            unsigned char* synAck = createSynAck((uint16_t)num_conn);
+            memcpy(sendSynAck, synAck, PACKETSIZE);
 
-        //Increase Number of Connections
-        num_conn++;
-      } 
-      else if (pack.getFinFlag()) { //Start Shutdown Sequence
-        cout << "RECV " << pack.header.seq << " " << pack.header.ack << " " << pack.header.connID << " FIN" << endl;
+            //Send out Syn + Ack PACKET
+            cout << "SEND " << 4321 << " " << 12346 << " " << num_conn << " ACK SYN" << endl;
+            if (sendto(sockfd, sendSynAck, HEADERSIZE, 0, (struct sockaddr *)&remaddr, addrlen) < 0) {
+               perror("ERROR: sendto() Failed");
+               return 0;
+            }
 
-        // Create ACKNOWLEDGEMENT Packet to Send Back
-        unsigned char sendAck[PACKETSIZE] = {0};
-        unsigned char *ack = createAck(4322, pack.header.seq + 1, pack.header.connID);
-        memcpy(sendAck, ack, PACKETSIZE);
+            //Create File Handler
+            string file_path = file_directory + "/" + to_string(num_conn) + ".file"; //FileName
+            FILE *fs = fopen(file_path.c_str(), "wb"); //Open the File for Modification
+            files[num_conn] = fs;
+            if (!files[num_conn]) {
+               cerr << "ERROR: Could Not Open File" << endl;
+               return 1;
+            }
 
-        // Send the ACKNOWLEDGEMENT Packet
-        cout << "SEND " << 4322 << " " << pack.header.seq + 1 << " " << pack.header.connID << " ACK" << endl;
-        if (sendto(sockfd, sendAck, HEADERSIZE, 0, (struct sockaddr *) &remaddr, addrlen) < 0) {
-          perror("ERROR: FIN ACK FAILED!");
-          return 1;
-        }
+            //Increase Number of Connections
+            num_conn++;
+         } else if (pack.getFinFlag()) { //Start Shutdown Sequence
+            cout << "RECV " << pack.header.seq << " " << pack.header.ack << " " << pack.header.connID << " FIN" << endl;
 
-        // Close File Descriptor
-        int conn = (int)pack.header.connID;
-        fclose(files[conn]);
-
-        // ALso Create FIN?
-        unsigned char sendFin[PACKETSIZE] = {0};
-        unsigned char *fin = createFin(4322, pack.header.connID);
-        memcpy(sendFin, fin, PACKETSIZE);
-
-        // Send the FIN Packet
-        cout << "SEND " << 4322 << " " << 0 << " " << pack.header.connID << " FIN" << endl;
-        if (sendto(sockfd, sendFin, HEADERSIZE, 0, (struct sockaddr *) &remaddr, sizeof(remaddr)) < 0) {
-            cerr << "ERROR: Unable to Send FIN Packet" << endl;
-            return 1;
-        }
-		  cerr << "FILE DONE TRANSMITTING---------------------------------------" << endl;
-      } 
-      else { //There is More Data: Save into File!
-        if (!pack.getAckFlag()) {
-          int conn = (int)pack.header.connID;
-          if (conn_state[conn] == (int) pack.header.seq) {
-            char test[PAYLOADSIZE];
-            memset(&test, '\0', sizeof(test));
-            memcpy(test, buf + 12, PAYLOADSIZE);
-
-            int conn = (int) pack.header.connID;
-            int fileBytesWritten = fwrite(test, sizeof(char), bytesRead - 12, files[conn]); //Write File
-            fflush(files[conn]); //Make Sure Everything is Written to File!
-
-            //Send an ACK
-            unsigned char sendAck[PACKETSIZE] = {};
-            unsigned char *ack = createAck(pack.header.ack, pack.header.seq + fileBytesWritten, pack.header.connID);
+            // Create ACKNOWLEDGEMENT Packet to Send Back
+            unsigned char sendAck[PACKETSIZE] = {0};
+            unsigned char *ack = createAck(4322, pack.header.seq + 1, pack.header.connID);
             memcpy(sendAck, ack, PACKETSIZE);
 
-            //Send the ACKNOWLEDGEMENT PACKET TO CLIENT
-            cout << "SEND " << pack.header.ack << " " << pack.header.seq + fileBytesWritten << " " << pack.header.connID << " ACK" << endl;
+            // Send the ACKNOWLEDGEMENT Packet
+            cout << "SEND " << 4322 << " " << pack.header.seq + 1 << " " << pack.header.connID << " ACK" << endl;
             if (sendto(sockfd, sendAck, HEADERSIZE, 0, (struct sockaddr *) &remaddr, addrlen) < 0) {
-              perror("ERROR: sendto() Failed");
-              return 1;
+               perror("ERROR: FIN ACK FAILED!");
+               return 1;
             }
-            //Update the Expected Sequence Number
-            conn_state[conn] = (int)pack.header.seq + fileBytesWritten;
-          }
- 		  else if (conn_state[conn]  > (int) pack.header.seq ){
-				cout << "hello";
-			     //Send an ACK
-				unsigned char sendAck[PACKETSIZE] = {};
-				unsigned char *ack = createAck(pack.header.ack, conn_state[conn], pack.header.connID);
-				memcpy(sendAck, ack, PACKETSIZE);
-				
-				//Send the ACKNOWLEDGEMENT PACKET TO CLIENT
-				cout << "SEND " << pack.header.ack << " " << conn_state[conn]  << " " << pack.header.connID << " ACK" << endl;
-				if (sendto(sockfd, sendAck, HEADERSIZE, 0, (struct sockaddr *) &remaddr, addrlen) < 0) {
-				  perror("ERROR: sendto() Failed");
-				  return 1;
-				}
-			
-		  }
-		  else {
-			  cout << (int) pack.header.seq << ":" << conn_state[conn] << "\n";
-		  }
-        } 
-		
-        else {
-          cout << "RECV " << pack.header.seq << " " << pack.header.ack << " " << pack.header.connID << " ACK" << endl;
-        }
+
+            // Close File Descriptor
+            int conn = (int)pack.header.connID;
+            fclose(files[conn]);
+
+            // ALso Create FIN?
+            unsigned char sendFin[PACKETSIZE] = {0};
+            unsigned char *fin = createFin(4322, pack.header.connID);
+            memcpy(sendFin, fin, PACKETSIZE);
+
+            // Send the FIN Packet
+            cout << "SEND " << 4322 << " " << 0 << " " << pack.header.connID << " FIN" << endl;
+            if (sendto(sockfd, sendFin, HEADERSIZE, 0, (struct sockaddr *) &remaddr, sizeof(remaddr)) < 0) {
+               cerr << "ERROR: Unable to Send FIN Packet" << endl;
+               return 1;
+            }
+            cerr << "FILE DONE TRANSMITTING---------------------------------------" << endl;
+         } else { //There is More Data: Save into File!
+            if (!pack.getAckFlag()) {
+               int conn = (int)pack.header.connID;
+               if (conn_state[conn] == (int) pack.header.seq) {
+                  char test[PAYLOADSIZE];
+                  memset(&test, '\0', sizeof(test));
+                  memcpy(test, buf + 12, PAYLOADSIZE);
+
+                  int conn = (int) pack.header.connID;
+                  int fileBytesWritten = fwrite(test, sizeof(char), bytesRead - 12, files[conn]); //Write File
+                  fflush(files[conn]); //Make Sure Everything is Written to File!
+
+                  //Send an ACK
+                  unsigned char sendAck[PACKETSIZE] = {};
+                  unsigned char *ack = createAck(pack.header.ack, pack.header.seq + fileBytesWritten, pack.header.connID);
+                  memcpy(sendAck, ack, PACKETSIZE);
+
+                  //Send the ACKNOWLEDGEMENT PACKET TO CLIENT
+                  cout << "SEND " << pack.header.ack << " " << pack.header.seq + fileBytesWritten << " " << pack.header.connID << " ACK" << endl;
+                  if (sendto(sockfd, sendAck, HEADERSIZE, 0, (struct sockaddr *) &remaddr, addrlen) < 0) {
+                     perror("ERROR: sendto() Failed");
+                     return 1;
+                  }
+                  //Update the Expected Sequence Number
+                  conn_state[conn] = (int)pack.header.seq + fileBytesWritten;
+               } else if (conn_state[conn]  > (int) pack.header.seq ){
+                  cout << "hello";
+                  //Send an ACK
+                  unsigned char sendAck[PACKETSIZE] = {};
+                  unsigned char *ack = createAck(pack.header.ack, conn_state[conn], pack.header.connID);
+                  memcpy(sendAck, ack, PACKETSIZE);
+
+                  //Send the ACKNOWLEDGEMENT PACKET TO CLIENT
+                  cout << "SEND " << pack.header.ack << " " << conn_state[conn]  << " " << pack.header.connID << " ACK" << endl;
+                  if (sendto(sockfd, sendAck, HEADERSIZE, 0, (struct sockaddr *) &remaddr, addrlen) < 0) {
+                     perror("ERROR: sendto() Failed");
+                     return 1;
+                  }
+
+               } else {
+                  cerr << (int) pack.header.seq << ":" << conn_state[conn] << "\n";
+               }
+            } else {
+               cout << "RECV " << pack.header.seq << " " << pack.header.ack << " " << pack.header.connID << " ACK" << endl;
+            }
+         }
       }
-    }
-  }
-  close(sockfd);
-  return 0;
+   }
+
+   // Close socket
+   close(sockfd);
+   return 0;
 }
