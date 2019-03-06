@@ -177,21 +177,6 @@ int main(int argc, char *argv[]) //Main Function w/ Arguments from Command Line
             packet pack(buf, PACKETSIZE);
             cout << "RECV " << pack.header.seq << " " << pack.header.ack << " " << pack.header.connID << " " << CWND << " " << SSTHRESH << " ACK SYN" << endl;
 
-            if(CWND < SSTHRESH){ //Slow Start!
-                CWND = CWND + 512;
-                if(CWND > 51200){
-                    CWND = 51200;
-                }
-                //SEND DATA FROM: AFTER THE LAST ACKNOWLEDGED BYTE TO: THE CONGESTION WINDOW SIZE(CWND). Can be split up to multiple packets.
-            }
-            else if(CWND >= SSTHRESH){ //Congestion Avoidance!
-                CWND = CWND + (512 * 512) / CWND;
-                if(CWND > 51200){
-                    CWND = 51200;
-                }
-                //SEND DATA FROM: AFTER THE LAST ACKNOWLEDGED BYTE TO: THE CONGESTION WINDOW SIZE(CWND). Can be split up to multiple packets.
-            }
-
             // Store Connetion ID into a Global Variable
             clientID = pack.header.connID;
             nextAck = pack.header.seq + 1;
@@ -374,21 +359,6 @@ int main(int argc, char *argv[]) //Main Function w/ Arguments from Command Line
             packet pack(buf, PACKETSIZE);
             if (pack.getAckFlag()) {
                cout << "RECV " << pack.header.seq << " " << pack.header.ack << " " << pack.header.connID << " " << CWND << " " << SSTHRESH << " ACK" << endl;
-
-               if(CWND < SSTHRESH){ //Slow Start!
-                  CWND = CWND + 512;
-                  if(CWND > 51200){
-                     CWND = 51200;
-                  }
-                  //SEND DATA FROM: AFTER THE LAST ACKNOWLEDGED BYTE TO: THE CONGESTION WINDOW SIZE(CWND). Can be split up to multiple packets.
-               }
-               else if(CWND >= SSTHRESH){ //Congestion Avoidance!
-                  CWND = CWND + (512 * 512) / CWND;
-                  if(CWND > 51200){
-                     CWND = 51200;
-                  }
-                  //SEND DATA FROM: AFTER THE LAST ACKNOWLEDGED BYTE TO: THE CONGESTION WINDOW SIZE(CWND). Can be split up to multiple packets.
-               }
 
                //Get Address from Server Again
                struct sockaddr_in remaddr;
