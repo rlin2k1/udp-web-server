@@ -46,10 +46,11 @@ using namespace std; //Using the Standard Namespace
 
 #define MAXCLIENTS 30
 int num_conn = 1;
-int conn_state[MAXCLIENTS];
+uint32_t conn_state[MAXCLIENTS];
 FILE *files[MAXCLIENTS];
 clock_t times[MAXCLIENTS];
 bool is_valid[MAXCLIENTS] = {false};
+bool shut_down[MAXCLIENTS] = {false};
 
 string file_directory = "";
 char error[6] = "ERROR";
@@ -241,6 +242,7 @@ int main(int argc, char *argv[]) //Main Function w/ Arguments from Command Line
                return 1;
             }
             cerr << "FILE DONE TRANSMITTING---------------------------------------" << endl;
+				shut_down[pack.header.connID] = true;
          } else { //There is More Data: Save into File!
             if(is_valid[pack.header.connID] == false)
                cerr << "ERROR: PACKET CONNECTION ID IS NOT VALID" << endl;
@@ -290,7 +292,9 @@ int main(int argc, char *argv[]) //Main Function w/ Arguments from Command Line
                }
             } else {
                cout << "RECV " << pack.header.seq % MAXNUM << " " << pack.header.ack % MAXNUM << " " << pack.header.connID << " ACK" << endl;
-            }
+					if(shut_down[pack.header.connID])
+						is_valid[pack.header.connID] = false;
+				}
          }
       }
    }
