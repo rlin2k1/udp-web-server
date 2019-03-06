@@ -48,6 +48,8 @@ using namespace std; //Using the Standard Namespace
 int num_conn = 1;
 uint32_t conn_state[MAXCLIENTS];
 FILE *files[MAXCLIENTS];
+clock_t times[MAXCLIENTS];
+bool is_valid[MAXCLIENTS] = {false};
 
 string file_directory = "";
 char error[6] = "ERROR";
@@ -160,6 +162,17 @@ int main(int argc, char *argv[]) //Main Function w/ Arguments from Command Line
    // Begin Getting Data from Clients
    // ------------------------------------------------------------------------ //
    while (1) {
+      for(int i = 1; i <= num_conn - 1; i++){
+         if(is_valid[i] == false)
+            continue;
+         if( ((clock() - times[i]) / CLOCKS_PER_SEC) > 10.0) {
+            string file_path = file_directory + "/" + to_string(i) + ".file"; //Filename
+            FILE *fd = freopen(file_path.c_str(), "w", files[i]); //Rewrite the File!
+            fwrite(error, 1, 6, fd); //Write the Error Message into the File
+            fflush(fd); //Make Sure Everything is Written to File!
+            is_valid[i] = false;
+         }
+      }
       memset(buf, '\0', sizeof(buf)); //Clear the Receiving Buffer
       bytesRead = recvfrom(sockfd, buf, PACKETSIZE, 0, (struct sockaddr *)&remaddr, &addrlen);
 
@@ -185,6 +198,7 @@ int main(int argc, char *argv[]) //Main Function w/ Arguments from Command Line
             string file_path = file_directory + "/" + to_string(num_conn) + ".file"; //FileName
             FILE *fs = fopen(file_path.c_str(), "wb"); //Open the File for Modification
             files[num_conn] = fs;
+            is_valid[num_conn] = true;
             if (!files[num_conn]) {
                cerr << "ERROR: Could Not Open File" << endl;
                return 1;
@@ -193,6 +207,8 @@ int main(int argc, char *argv[]) //Main Function w/ Arguments from Command Line
             //Increase Number of Connections
             num_conn++;
          } else if (pack.getFinFlag()) { //Start Shutdown Sequence
+            if(is_valid[pack.header.connID] == false)
+               cerr << "ERROR: PACKET CONNECTION ID IS NOT VALID" << endl;
             cout << "RECV " << pack.header.seq << " " << pack.header.ack << " " << pack.header.connID << " FIN" << endl;
 
             // Create ACKNOWLEDGEMENT Packet to Send Back
@@ -225,6 +241,8 @@ int main(int argc, char *argv[]) //Main Function w/ Arguments from Command Line
             }
             cerr << "FILE DONE TRANSMITTING---------------------------------------" << endl;
          } else { //There is More Data: Save into File!
+            if(is_valid[pack.header.connID] == false)
+               cerr << "ERROR: PACKET CONNECTION ID IS NOT VALID" << endl;
             if (!pack.getAckFlag()) {
                // Packet variables
                int conn = (int) pack.header.connID;
@@ -252,6 +270,7 @@ int main(int argc, char *argv[]) //Main Function w/ Arguments from Command Line
                   }
                   //Update the Expected Sequence Number
                   conn_state[conn] = (pack.header.seq + fileBytesWritten) % MAXNUM;
+                  times[conn] = clock();
                } else if (conn_state[conn] % MAXNUM > pack.header.seq % MAXNUM){
                   //Send an ACK
                   unsigned char sendAck[PACKETSIZE] = {};
