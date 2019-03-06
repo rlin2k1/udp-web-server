@@ -215,7 +215,6 @@ int main(int argc, char *argv[]) //Main Function w/ Arguments from Command Line
          // Check for Duplicates
          if (!duplicate) { //TODO: WHY ! DUPLICATE???
             bytesRead = fread(payload, sizeof(char), send_size, fs);
-            cerr << "sendsize: " << send_size << ", " <<bytesRead ;
             // Check for EOF
             if (bytesRead == 0) 
                break;
