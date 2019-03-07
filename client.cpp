@@ -29,6 +29,7 @@ Date Created:
 #include <stdlib.h>
 #include <poll.h>
 #include <ctime>
+#include <chrono>
 #include <cstdlib>
 
 using namespace std; //Using the Standard Namespace
@@ -149,7 +150,8 @@ int main(int argc, char *argv[]) //Main Function w/ Arguments from Command Line
 	int SSTHRESH = 10000; //Slow Start Threshold
 	int current_window = 0; //Current Window Size
 	int send_size = PAYLOADSIZE; //How Much We Should Send
-   clock_t start_time = (double)clock();
+   auto start = chrono::system_clock::now();
+   chrono::duration<double> diff;
 
    // ----------------------------------------------------------------------- //
    // THREE WAY HANDSHAKE!!!
@@ -178,7 +180,7 @@ int main(int argc, char *argv[]) //Main Function w/ Arguments from Command Line
          if (bytesRead > 0) { //We Got a Packet from the Server. Second HandShake
             packet pack(buf, PACKETSIZE);
             cout << "RECV " << pack.header.seq << " " << pack.header.ack << " " << pack.header.connID << " " << CWND << " " << SSTHRESH << " ACK SYN" << endl;
-            start_time = (double)clock();
+            start = chrono::system_clock::now();
             // Store Connetion ID into a Global Variable
             clientID = pack.header.connID;
             nextAck = pack.header.seq + 1;
@@ -248,8 +250,9 @@ int main(int argc, char *argv[]) //Main Function w/ Arguments from Command Line
          break;
       }
 
-      double seconds_passed = ((double)(clock() - start_time) / CLOCKS_PER_SEC);
-      if ( seconds_passed  > 10.0) {
+      auto end = chrono::system_clock::now();
+      diff = end - start;
+      if (diff.count()  > 10.0) {
          cerr << "ERROR: Client did not receive Packet from the Server for more than 10 Seconds" << endl;
          close(sockfd);
          return 3;
@@ -281,7 +284,7 @@ int main(int argc, char *argv[]) //Main Function w/ Arguments from Command Line
                }
                //Create a New Packet
                packet recvPack(recvBuf, PACKETSIZE);
-               start_time = (double)clock();
+               start = chrono::system_clock::now();
                cout << "HERE3" << endl;
 
                cout << "RECV " << recvPack.header.seq % MAXNUM << " " << recvPack.header.ack % MAXNUM << " " << recvPack.header.connID << " " << CWND << " " << SSTHRESH << " ACK" << endl ;
@@ -324,7 +327,7 @@ int main(int argc, char *argv[]) //Main Function w/ Arguments from Command Line
                   cerr << "ERROR: Received Wrong Connection ID: " << recvPack.header.connID << endl;
                   return 1;
                }
-               usleep(3000);
+               //usleep(3000);
             }
          }
       }
@@ -339,8 +342,10 @@ int main(int argc, char *argv[]) //Main Function w/ Arguments from Command Line
 
          //Reset Duplicate
          duplicate = false;
-         double seconds_passed = ((double)(clock() - start_time) / CLOCKS_PER_SEC);
-         if ( seconds_passed > 10.0) {
+         auto end = chrono::system_clock::now();
+         diff = end - start;
+         cerr << "Time since start: " << diff.count() << endl;
+         if (diff.count() > 10.0) {
             cerr << "ERROR: Client did not receive Packet from the Server for more than 10 Seconds" << endl;
             close(sockfd);
             return 3;
@@ -395,6 +400,8 @@ int main(int argc, char *argv[]) //Main Function w/ Arguments from Command Line
                while (flag) {
                   // Check that Two seconds Haven't Passed
                   secondsPassed = (clock() - startTime) / CLOCKS_PER_SEC;
+                  cerr << secondsPassed << " Seconds have Passed since " << startTime << endl;
+                  cerr << "Clock: " << clock() << " CLOCKS_PER_SEC " << CLOCKS_PER_SEC << endl;
                   if (secondsPassed >= secondsToDelay) {
                      cerr << secondsPassed << " Seconds have Passed" << endl;
                      flag = false;
