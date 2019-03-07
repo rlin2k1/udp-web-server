@@ -157,14 +157,24 @@ int main(int argc, char *argv[]) //Main Function w/ Arguments from Command Line
    // THREE WAY HANDSHAKE!!!
    // ----------------------------------------------------------------------- //
    cerr << "START THREE WAY HANDSHAKE-------------------------------------------" << endl;
+   int syn_sent = 0;
    while (1) {	
-      cout << "SEND " << 12345 << " " << 0 << " " << 0 << " " << CWND << " " << SSTHRESH << " SYN" << endl;
+      if (syn_sent > 20){
+		  cerr << "ERROR: No response from server" << endl;
+		  return 1;
+	  }
+	  if (syn_sent > 0 ){
+	     cout << "SEND " << 12345 << " " << 0 << " " << 0 << " " << CWND << " " << SSTHRESH << " SYN DUP" << endl;
+	  }
+	  else{
+         cout << "SEND " << 12345 << " " << 0 << " " << 0 << " " << CWND << " " << SSTHRESH << " SYN" << endl;
+	  }
       //Send First HandShake to Server!
       if (sendto(sockfd, sendSyn, HEADERSIZE, 0, (struct sockaddr *)&serveraddr, sizeof(serveraddr)) < 0) {
          perror("ERROR: Sendto Failed!");
          return 0;
       }
-      int result = poll(fds, 1, 10000); //Poll 15 Seconds for Response
+      int result = poll(fds, 1, 500); //Poll 10 Seconds for Response
       if (result < 0) {
          cerr << "ERROR: Unable to Create Poll" << endl;
          return 1;
@@ -202,9 +212,8 @@ int main(int argc, char *argv[]) //Main Function w/ Arguments from Command Line
          }
       } 
       else {
-         cerr << "ERROR: CONNECTION TIMED OUT!" << endl;
-         return 1;
-      }
+		syn_sent  = syn_sent + 1;
+	}
    }
    cerr << "BEGIN TRANSMISSION OF FILE------------------------------------------" << endl;
    // ------------------------------------------------------------------------ //
