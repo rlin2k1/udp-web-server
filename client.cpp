@@ -285,7 +285,6 @@ int main(int argc, char *argv[]) //Main Function w/ Arguments from Command Line
                //Create a New Packet
                packet recvPack(recvBuf, PACKETSIZE);
                start = chrono::system_clock::now();
-               cout << "HERE3" << endl;
 
                cout << "RECV " << recvPack.header.seq % MAXNUM << " " << recvPack.header.ack % MAXNUM << " " << recvPack.header.connID << " " << CWND << " " << SSTHRESH << " ACK" << endl ;
 
@@ -338,6 +337,7 @@ int main(int argc, char *argv[]) //Main Function w/ Arguments from Command Line
 			CWND = 512;
          //Resend packet
          fseek(fs, -current_window, SEEK_CUR);
+         packetSeq = packetSeq - current_window;
          current_window = 0;
 
          //Reset Duplicate
