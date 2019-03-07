@@ -36,6 +36,7 @@ using namespace std; //Using the Standard Namespace
 uint16_t clientID = -1;
 uint32_t nextSeq = -1;
 uint32_t nextAck = -1;
+uint32_t packetSeq = -1;
 bool duplicate = false;
 
 int main(int argc, char *argv[]) //Main Function w/ Arguments from Command Line
@@ -181,6 +182,7 @@ int main(int argc, char *argv[]) //Main Function w/ Arguments from Command Line
             clientID = pack.header.connID;
             nextAck = pack.header.seq + 1;
             nextSeq = pack.header.ack;
+            packetSeq = nextSeq;
 
             //Create a ACKNOWLEDGEMENT Packet
             unsigned char sendAck[PACKETSIZE] = {0};
@@ -205,40 +207,46 @@ int main(int argc, char *argv[]) //Main Function w/ Arguments from Command Line
    // ------------------------------------------------------------------------ //
    // Begin Transmission of the File!
    // ------------------------------------------------------------------------ //
+   bool break_out = false;
    while (1) {
-      if (current_window < CWND) { //If current window size is filled up, we only wait for ACKS
-         send_size = CWND - current_window; //How many free bytes that we have to send
-         if (send_size > 512) { //We have to make sure payload size is less than 512
-            send_size = 512;
-         }
+      while (current_window + 512 <= CWND) { //If current window size is filled up, we only wait for ACKS
+         send_size = 512;
 
          // Check for Duplicates
          // TODO: check for dup
-         if (!duplicate) { //TODO: WHY ! DUPLICATE???
-            bytesRead = fread(payload, sizeof(char), send_size, fs);
-            // Check for EOF
-            if (bytesRead == 0) 
-               break;
-            
-            //Initialize a New Packet to Send
-            char sendPack[PACKETSIZE];
-            memset(&sendPack, '\0', sizeof(sendPack));
-
-            //Set Up a New Packet with PACKET STRUCT
-            packet pack;
-            pack.setSeq(nextSeq % MAXNUM);
-            pack.setAck(nextAck % MAXNUM);
-            unsigned char* hold  = createDataPacket(nextSeq % MAXNUM, nextAck % MAXNUM, clientID, payload, bytesRead);
-            memcpy(sendPack, hold, PACKETSIZE);
-            
-            std::cout << "SEND " << nextSeq % MAXNUM << " " << 0 << " " << clientID << " " << CWND << " " << SSTHRESH << std::endl;
-            if (sendto(sockfd, sendPack, bytesRead + 12, 0, (struct sockaddr *)&serveraddr, sizeof(serveraddr)) < 0) {
-               perror("ERROR: Sendto Failed!");
-               return 1;
-            }
-            current_window = current_window + send_size; //Update current_window
+         //if (!duplicate) { //TODO: WHY ! DUPLICATE???
+         memset(&payload, '\0', sizeof(payload));
+         bytesRead = fread(payload, sizeof(char), send_size, fs);
+         // Check for EOF
+         if (bytesRead == 0) {
+            break_out = true;
+            break;
          }
+         
+         //Initialize a New Packet to Send
+         char sendPack[PACKETSIZE];
+         memset(&sendPack, '\0', sizeof(sendPack));
+
+         //Set Up a New Packet with PACKET STRUCT
+         packet pack;
+         pack.setSeq(packetSeq % MAXNUM);
+         pack.setAck(nextAck % MAXNUM);
+         unsigned char* hold  = createDataPacket(packetSeq % MAXNUM, nextAck % MAXNUM, clientID, payload, bytesRead);
+         memcpy(sendPack, hold, PACKETSIZE);
+         
+         std::cout << "SEND " << packetSeq % MAXNUM << " " << 0 << " " << clientID << " " << CWND << " " << SSTHRESH << std::endl;
+         if (sendto(sockfd, sendPack, bytesRead + 12, 0, (struct sockaddr *)&serveraddr, sizeof(serveraddr)) < 0) {
+            perror("ERROR: Sendto Failed!");
+            return 1;
+         }
+         packetSeq = packetSeq + bytesRead;
+         current_window = current_window + send_size; //Update current_window
+         //}
       }
+      if(break_out){
+         break;
+      }
+
 
       //Get Address of Server
       struct sockaddr_in remaddr;
@@ -254,61 +262,60 @@ int main(int argc, char *argv[]) //Main Function w/ Arguments from Command Line
          //Check for Any Signs from SERVER
          if (fds[0].revents & POLLIN) {
             //Create a New Packet
-            unsigned char recvBuf[PACKETSIZE];
+            while(true) {
+               unsigned char recvBuf[PACKETSIZE];
 
-            // Get the Received Bytes
-            bytesRecv = recvfrom(sockfd, recvBuf, PACKETSIZE, 0, (struct sockaddr *) &remaddr, &addrlen);
+               // Get the Received Bytes
+               bytesRecv = recvfrom(sockfd, recvBuf, PACKETSIZE, 0, (struct sockaddr *) &remaddr, &addrlen);
 
-            // Check for Error
-            if (bytesRecv < 0) {
-                  cerr << "ERROR: recv() failed" << endl;
-                  close(sockfd);
-                  return 1;
-            }
+               // Check for Error
+               if (bytesRecv <= 0) {
+                  break;
+               }
+               //Create a New Packet
+               packet recvPack(recvBuf, PACKETSIZE);
 
-            //Create a New Packet
-            packet recvPack(recvBuf, PACKETSIZE);
+               cout << "RECV " << recvPack.header.seq % MAXNUM << " " << recvPack.header.ack % MAXNUM << " " << recvPack.header.connID << " " << CWND << " " << SSTHRESH << " ACK" << endl ;
 
-            cout << "RECV " << recvPack.header.seq % MAXNUM << " " << recvPack.header.ack % MAXNUM << " " << recvPack.header.connID << " " << CWND << " " << SSTHRESH << " ACK" << endl ;
+               // TODO: Check the ACK Number and Make Sure that it Matches what We Want
+               //Check that the Connections are the Same!
+               if (recvPack.header.connID == clientID) {
+               //cout << "recvPack.header.ack: " << recvPack.header.ack << ": " << nextSeq + bytesRead << "\n";   
+            //cout << "free space : " << CWND - current_window;
+               if ((recvPack.header.ack % MAXNUM) >= (nextSeq + bytesRead) % MAXNUM) {
+                     if(CWND < SSTHRESH){ //Slow Start!
+                        CWND = CWND + 512;
+                        if(CWND > 51200){
+                           CWND = 51200;
+                        }
+                        //SEND DATA FROM: AFTER THE LAST ACKNOWLEDGED BYTE TO: THE CONGESTION WINDOW SIZE(CWND). Can be split up to multiple packets.
+                        current_window = current_window - bytesRead;
+                     }
+                     else if(CWND >= SSTHRESH){ //Congestion Avoidance!
+                        CWND = CWND + (512 * 512) / CWND;
+                        if(CWND > 51200){
+                           CWND = 51200;
+                        }
+                        //SEND DATA FROM: AFTER THE LAST ACKNOWLEDGED BYTE TO: THE CONGESTION WINDOW SIZE(CWND). Can be split up to multiple packets.
+                        current_window = current_window - bytesRead;
+                     }
+                     // Set Duplicate to False
+                     //duplicate = false;
 
-            // TODO: Check the ACK Number and Make Sure that it Matches what We Want
-            //Check that the Connections are the Same!
-            if (recvPack.header.connID == clientID) {
-            //cout << "recvPack.header.ack: " << recvPack.header.ack << ": " << nextSeq + bytesRead << "\n";   
-			 //cout << "free space : " << CWND - current_window;
-			   if ((recvPack.header.ack % MAXNUM) >= (nextSeq + bytesRead) % MAXNUM) {
-                  if(CWND < SSTHRESH){ //Slow Start!
-							CWND = CWND + 512;
-							if(CWND > 51200){
-								CWND = 51200;
-							}
-							//SEND DATA FROM: AFTER THE LAST ACKNOWLEDGED BYTE TO: THE CONGESTION WINDOW SIZE(CWND). Can be split up to multiple packets.
-							current_window = current_window - bytesRead;
-						}
-						else if(CWND >= SSTHRESH){ //Congestion Avoidance!
-							CWND = CWND + (512 * 512) / CWND;
-							if(CWND > 51200){
-								CWND = 51200;
-							}
-							//SEND DATA FROM: AFTER THE LAST ACKNOWLEDGED BYTE TO: THE CONGESTION WINDOW SIZE(CWND). Can be split up to multiple packets.
-							current_window = current_window - bytesRead;
-						}
-                  // Set Duplicate to False
-                  duplicate = false;
-
-                  // Set Next Seq to the Acknowledgement Number of the Server
-                  nextSeq = recvPack.header.ack % MAXNUM;
-                  nextAck = 0;
+                     // Set Next Seq to the Acknowledgement Number of the Server
+                     nextSeq = recvPack.header.ack % MAXNUM;
+                     nextAck = 0;
+                  } 
+                  else {
+                     cout << "DROP " << recvPack.header.seq % MAXNUM << " " << recvPack.header.ack % MAXNUM << " " << recvPack.header.connID << " " << CWND << " " << SSTHRESH << " ACK" << endl;
+                     //duplicate = true;
+                  }
                } 
                else {
-                  cout << "DROP " << recvPack.header.seq % MAXNUM << " " << recvPack.header.ack % MAXNUM << " " << recvPack.header.connID << " " << CWND << " " << SSTHRESH << " ACK" << endl;
-                  duplicate = true;
-                  prev_dup = true;
+                  cerr << "ERROR: Received Wrong Connection ID: " << recvPack.header.connID << endl;
+                  return 1;
                }
-            } 
-            else {
-               cerr << "ERROR: Received Wrong Connection ID: " << recvPack.header.connID << endl;
-               return 1;
+               usleep(3000);
             }
          }
       }
