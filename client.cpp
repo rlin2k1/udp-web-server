@@ -150,7 +150,7 @@ int main(int argc, char *argv[]) //Main Function w/ Arguments from Command Line
 	int SSTHRESH = 10000; //Slow Start Threshold
 	int current_window = 0; //Current Window Size
 	int send_size = PAYLOADSIZE; //How Much We Should Send
-   auto start = chrono::system_clock::now();
+   chrono::system_clock::time_point start = chrono::system_clock::now();
    chrono::duration<double> diff;
 
    // ----------------------------------------------------------------------- //
@@ -326,7 +326,7 @@ int main(int argc, char *argv[]) //Main Function w/ Arguments from Command Line
                   cerr << "ERROR: Received Wrong Connection ID: " << recvPack.header.connID << endl;
                   return 1;
                }
-               //usleep(3000);
+               usleep(3000);
             }
          }
       }
@@ -400,8 +400,6 @@ int main(int argc, char *argv[]) //Main Function w/ Arguments from Command Line
                while (flag) {
                   // Check that Two seconds Haven't Passed
                   secondsPassed = (clock() - startTime) / CLOCKS_PER_SEC;
-                  cerr << secondsPassed << " Seconds have Passed since " << startTime << endl;
-                  cerr << "Clock: " << clock() << " CLOCKS_PER_SEC " << CLOCKS_PER_SEC << endl;
                   if (secondsPassed >= secondsToDelay) {
                      cerr << secondsPassed << " Seconds have Passed" << endl;
                      flag = false;
