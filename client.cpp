@@ -230,7 +230,7 @@ int main(int argc, char *argv[]) //Main Function w/ Arguments from Command Line
          memset(&payload, '\0', sizeof(payload));
          bytesRead = fread(payload, sizeof(char), send_size, fs);
          // Check for EOF
-         if (bytesRead == 0) {
+         if (bytesRead == 0) { 
             break_out = true;
             break;
          }
