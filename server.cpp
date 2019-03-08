@@ -280,7 +280,7 @@ int main(int argc, char *argv[]) //Main Function w/ Arguments from Command Line
                   //Update the Expected Sequence Number
                   conn_state[conn] = (pack.header.seq + fileBytesWritten) % MAXNUM;
                   times[conn] = chrono::system_clock::now();
-               } else if (conn_state[conn] % MAXNUM > pack.header.seq % MAXNUM){
+               } else if (conn_state[conn] % MAXNUM < pack.header.seq % MAXNUM){
                   //Send an ACK
                   unsigned char sendAck[PACKETSIZE] = {};
                   unsigned char *ack = createAck(4322, conn_state[conn] % MAXNUM, pack.header.connID);

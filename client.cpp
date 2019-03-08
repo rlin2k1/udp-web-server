@@ -260,7 +260,7 @@ int main(int argc, char *argv[]) //Main Function w/ Arguments from Command Line
             std::cout << "SEND " << packetSeq % MAXNUM << " " << 0 << " " << clientID << " " << CWND << " " << SSTHRESH << " DUP" << std::endl;
          }
          packetSeq += bytesRead;
-         current_window = current_window + send_size; //Update current_window
+         current_window = current_window + bytesRead; //Update current_window
       }
 
       auto end = chrono::system_clock::now();
@@ -304,35 +304,100 @@ int main(int argc, char *argv[]) //Main Function w/ Arguments from Command Line
                // TODO: Check the ACK Number and Make Sure that it Matches what We Want
                //Check that the Connections are the Same!
                if (recvPack.header.connID == clientID) {
-                  if ((recvPack.header.ack % MAXNUM) >= (nextSeq + bytesRead) % MAXNUM) {
-                     if(CWND < SSTHRESH){ //Slow Start!
-                        CWND = CWND + 512;
-                        if(CWND > 51200){
-                           CWND = 51200;
+                  if (nextSeq + bytesRead > MAXNUM - 1 ){
+                     if ((recvPack.header.ack % MAXNUM) == (nextSeq + bytesRead) % MAXNUM) {
+                        if(CWND < SSTHRESH){ //Slow Start
+                           CWND = CWND + 512;
+                           if(CWND > 51200){
+                              CWND = 51200;
+                           }
+                           //SEND DATA FROM: AFTER THE LAST ACKNOWLEDGED BYTE TO: THE CONGESTION WINDOW SIZE(CWND). Can be split up to multiple packets.
+                           current_window = current_window - (bytesRead);
                         }
-                        //SEND DATA FROM: AFTER THE LAST ACKNOWLEDGED BYTE TO: THE CONGESTION WINDOW SIZE(CWND). Can be split up to multiple packets.
-                        current_window = current_window - bytesRead;
-                     }
-                     else if(CWND >= SSTHRESH){ //Congestion Avoidance!
-                        CWND = CWND + (512 * 512) / CWND;
-                        if(CWND > 51200){
-                           CWND = 51200;
+                        else if(CWND >= SSTHRESH){ //Congestion Avoidance!
+                           CWND = CWND + (512 * 512) / CWND;
+                           if(CWND > 51200){
+                              CWND = 51200;
+                           }
+                           //SEND DATA FROM: AFTER THE LAST ACKNOWLEDGED BYTE TO: THE CONGESTION WINDOW SIZE(CWND). Can be split up to multiple packets.
+                           current_window = current_window - (bytesRead);
                         }
-                        //SEND DATA FROM: AFTER THE LAST ACKNOWLEDGED BYTE TO: THE CONGESTION WINDOW SIZE(CWND). Can be split up to multiple packets.
-                        current_window = current_window - bytesRead;
-                     }
-                     // Set Duplicate to False
-                     //duplicate = false;
+                        // Set Duplicate to False
+                        //duplicate = false;
 
-                     // Set Next Seq to the Acknowledgement Number of the Server
-                     nextSeq = recvPack.header.ack % MAXNUM;
-                     nextAck = 0;
-                     if(break_out){
-                        break_out2 = true;
+                        // Set Next Seq to the Acknowledgement Number of the Server
+                        nextSeq = recvPack.header.ack % MAXNUM;
+                        nextAck = 0;
+                        if(break_out){
+                           break_out2 = true;
+                        }
+                     }
+                     else if (recvPack.header.ack % MAXNUM <= 51200){
+                        int diff = (MAXNUM - 1 -(nextSeq + bytesRead)) + (recvPack.header.ack % MAXNUM);
+                        
+                        if(CWND < SSTHRESH){ //Slow Start!
+                           CWND = CWND + 512;
+                           if(CWND > 51200){
+                              CWND = 51200;
+                           }
+                           //SEND DATA FROM: AFTER THE LAST ACKNOWLEDGED BYTE TO: THE CONGESTION WINDOW SIZE(CWND). Can be split up to multiple packets.
+                           current_window = current_window - (bytesRead + diff);
+                        }
+                        else if(CWND >= SSTHRESH){ //Congestion Avoidance!
+                           CWND = CWND + (512 * 512) / CWND;
+                           if(CWND > 51200){
+                              CWND = 51200;
+                           }
+                           //SEND DATA FROM: AFTER THE LAST ACKNOWLEDGED BYTE TO: THE CONGESTION WINDOW SIZE(CWND). Can be split up to multiple packets.
+                           current_window = current_window - (bytesRead + diff);
+                        }
+                        // Set Duplicate to False
+                        //duplicate = false;
+
+                        // Set Next Seq to the Acknowledgement Number of the Server
+                        nextSeq = recvPack.header.ack % MAXNUM;
+                        nextAck = 0;
+                        if(break_out){
+                           break_out2 = true;
+                        }
+                     }
+                     else {
+                        cout << "DROP " << recvPack.header.seq % MAXNUM << " " << recvPack.header.ack % MAXNUM << " " << recvPack.header.connID << " " << CWND << " " << SSTHRESH << " ACK" << endl;
                      }
                   }
-                  else {
-                     cout << "DROP " << recvPack.header.seq % MAXNUM << " " << recvPack.header.ack % MAXNUM << " " << recvPack.header.connID << " " << CWND << " " << SSTHRESH << " ACK" << endl;
+                  else{
+                     if ((recvPack.header.ack % MAXNUM) >= (nextSeq + bytesRead) % MAXNUM) {
+                        int diff = (recvPack.header.ack % MAXNUM) - ((nextSeq + bytesRead) % MAXNUM);
+                        
+                        if(CWND < SSTHRESH){ //Slow Start!
+                           CWND = CWND + 512;
+                           if(CWND > 51200){
+                              CWND = 51200;
+                           }
+                           //SEND DATA FROM: AFTER THE LAST ACKNOWLEDGED BYTE TO: THE CONGESTION WINDOW SIZE(CWND). Can be split up to multiple packets.
+                           current_window = current_window - (bytesRead + diff);
+                        }
+                        else if(CWND >= SSTHRESH){ //Congestion Avoidance!
+                           CWND = CWND + (512 * 512) / CWND;
+                           if(CWND > 51200){
+                              CWND = 51200;
+                           }
+                           //SEND DATA FROM: AFTER THE LAST ACKNOWLEDGED BYTE TO: THE CONGESTION WINDOW SIZE(CWND). Can be split up to multiple packets.
+                           current_window = current_window - (bytesRead + diff);
+                        }
+                        // Set Duplicate to False
+                        //duplicate = false;
+
+                        // Set Next Seq to the Acknowledgement Number of the Server
+                        nextSeq = recvPack.header.ack % MAXNUM;
+                        nextAck = 0;
+                        if(break_out){
+                           break_out2 = true;
+                        }
+                     }
+                     else {
+                        cout << "DROP " << recvPack.header.seq % MAXNUM << " " << recvPack.header.ack % MAXNUM << " " << recvPack.header.connID << " " << CWND << " " << SSTHRESH << " ACK" << endl;
+                     }
                   }
                }
                else {
