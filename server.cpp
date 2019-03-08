@@ -48,7 +48,7 @@ using namespace std; //Using the Standard Namespace
 int num_conn = 1;
 uint32_t conn_state[MAXCLIENTS];
 FILE *files[MAXCLIENTS];
-clock_t times[MAXCLIENTS];
+chrono::system_clock::time_point times[MAXCLIENTS];
 bool is_valid[MAXCLIENTS] = {false};
 bool shut_down[MAXCLIENTS] = {false};
 
@@ -166,7 +166,9 @@ int main(int argc, char *argv[]) //Main Function w/ Arguments from Command Line
       for(int i = 1; i <= num_conn - 1; i++){
          if(is_valid[i] == false)
             continue;
-         if( ((clock() - times[i]) / CLOCKS_PER_SEC) > 10.0) {
+			auto end = chrono::system_clock::now();
+			chrono::duration<double> diff = end - times[i];
+         if( (diff.count()) > 10.0) {
             string file_path = file_directory + "/" + to_string(i) + ".file"; //Filename
             FILE *fd = freopen(file_path.c_str(), "w", files[i]); //Rewrite the File!
             fwrite(error, 1, 6, fd); //Write the Error Message into the File
@@ -197,7 +199,7 @@ int main(int argc, char *argv[]) //Main Function w/ Arguments from Command Line
 
             //Create File Handler
             string file_path = file_directory + "/" + to_string(num_conn) + ".file"; //FileName
-            times[num_conn] = clock();
+            times[num_conn] = chrono::system_clock::now();
             FILE *fs = fopen(file_path.c_str(), "wb"); //Open the File for Modification
             files[num_conn] = fs;
             is_valid[num_conn] = true;
@@ -274,7 +276,7 @@ int main(int argc, char *argv[]) //Main Function w/ Arguments from Command Line
                   }
                   //Update the Expected Sequence Number
                   conn_state[conn] = (pack.header.seq + fileBytesWritten) % MAXNUM;
-                  times[conn] = clock();
+                  times[conn] = chrono::system_clock::now();
                } else if (conn_state[conn] % MAXNUM > pack.header.seq % MAXNUM){
                   //Send an ACK
                   unsigned char sendAck[PACKETSIZE] = {};
