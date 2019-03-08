@@ -325,7 +325,6 @@ int main(int argc, char *argv[]) //Main Function w/ Arguments from Command Line
                      nextAck = 0;
                      if(break_out){
                         break_out2 = true;
-                        break;
                      }
                   }
                   else {
