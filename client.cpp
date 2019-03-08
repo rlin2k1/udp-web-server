@@ -158,7 +158,7 @@ int main(int argc, char *argv[]) //Main Function w/ Arguments from Command Line
    // ----------------------------------------------------------------------- //
    // THREE WAY HANDSHAKE!!!
    // ----------------------------------------------------------------------- //
-   cerr << "START THREE WAY HANDSHAKE-------------------------------------------" << endl;
+   //cerr << "START THREE WAY HANDSHAKE-------------------------------------------" << endl;
    int syn_sent = 0;
    while (1) {	
       if (syn_sent > 20){
@@ -215,10 +215,10 @@ int main(int argc, char *argv[]) //Main Function w/ Arguments from Command Line
          }
       } 
       else {
-		syn_sent  = syn_sent + 1;
-	}
+         syn_sent  = syn_sent + 1;
+      }
    }
-   cerr << "BEGIN TRANSMISSION OF FILE------------------------------------------" << endl;
+   //cerr << "BEGIN TRANSMISSION OF FILE------------------------------------------" << endl;
    // ------------------------------------------------------------------------ //
    // Begin Transmission of the File!
    // ------------------------------------------------------------------------ //
@@ -252,13 +252,13 @@ int main(int argc, char *argv[]) //Main Function w/ Arguments from Command Line
             perror("ERROR: Sendto Failed!");
             return 1;
          }
-         packetSeq += bytesRead;
          if (packetSeq >= maxSeq) {
-            maxSeq += bytesRead;
             std::cout << "SEND " << packetSeq % MAXNUM << " " << 0 << " " << clientID << " " << CWND << " " << SSTHRESH << std::endl;
+            maxSeq += bytesRead;
          } else {
             std::cout << "SEND " << packetSeq % MAXNUM << " " << 0 << " " << clientID << " " << CWND << " " << SSTHRESH << " DUP" << std::endl;
          }
+         packetSeq += bytesRead;
          current_window = current_window + send_size; //Update current_window
       }
       if(break_out){
@@ -338,6 +338,7 @@ int main(int argc, char *argv[]) //Main Function w/ Arguments from Command Line
                   cerr << "ERROR: Received Wrong Connection ID: " << recvPack.header.connID << endl;
                   return 1;
                }
+               usleep(3000);
             }
          }
       }
@@ -367,7 +368,7 @@ int main(int argc, char *argv[]) //Main Function w/ Arguments from Command Line
    // FIN FLAG - DONE SENDING FILE!
    // ------------------------------------------------------------------------ //
    //Create FIN Packet
-   cerr << "BEGIN FIN SHUTDOWN--------------------------------------------------" << endl;
+   //cerr << "BEGIN FIN SHUTDOWN--------------------------------------------------" << endl;
    unsigned char sendFin[PACKETSIZE] = {0};
    unsigned char *fin = createFin(nextSeq, clientID);
    memcpy(sendFin, fin, PACKETSIZE);
@@ -424,7 +425,7 @@ int main(int argc, char *argv[]) //Main Function w/ Arguments from Command Line
                      //Check for FIN from Server
                      packet pack(recvBuf, PACKETSIZE);
                      if (pack.getFinFlag()) {
-                        cout << "RECV " << pack.header.seq % MAXNUM << " " << pack.header.ack % MAXNUM << " " << pack.header.connID << " " << CWND << " " << SSTHRESH << " FIN" << endl;
+                        cout << "RECV " << pack.header.seq % MAXNUM << " " << pack.header.ack % MAXNUM << " " << pack.header.connID << " " << CWND << " " << SSTHRESH << " ACK FIN" << endl;
                         
                         //Respond with ACK
                         unsigned char sendAck[PACKETSIZE] = {0};

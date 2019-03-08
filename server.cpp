@@ -216,8 +216,9 @@ int main(int argc, char *argv[]) //Main Function w/ Arguments from Command Line
             cout << "RECV " << pack.header.seq << " " << pack.header.ack << " " << pack.header.connID << " FIN" << endl;
 
             // Create ACKNOWLEDGEMENT Packet to Send Back
-            unsigned char sendAck[PACKETSIZE] = {0};
-            uint32_t client_ack = (pack.header.seq + 1) % MAXNUM; //(pack.header.seq + 1 > MAXNUM) ? 0 : pack.header.seq + 1;
+            //unsigned char sendAck[PACKETSIZE] = {0};
+            //uint32_t client_ack = (pack.header.seq + 1) % MAXNUM; //(pack.header.seq + 1 > MAXNUM) ? 0 : pack.header.seq + 1;
+            /*
             unsigned char *ack = createAck(4322, client_ack, pack.header.connID);
             memcpy(sendAck, ack, PACKETSIZE);
 
@@ -227,6 +228,7 @@ int main(int argc, char *argv[]) //Main Function w/ Arguments from Command Line
                perror("ERROR: FIN ACK FAILED!");
                return 1;
             }
+            */
 
             // Close File Descriptor
             int conn = (int)pack.header.connID;
@@ -234,11 +236,12 @@ int main(int argc, char *argv[]) //Main Function w/ Arguments from Command Line
 
             // ALso Create FIN?
             unsigned char sendFin[PACKETSIZE] = {0};
-            unsigned char *fin = createFin(4322, pack.header.connID);
+            uint32_t client_ack = (pack.header.seq + 1) % MAXNUM;
+            unsigned char *fin = createFinAck(4322, client_ack, pack.header.connID);
             memcpy(sendFin, fin, PACKETSIZE);
 
             // Send the FIN Packet
-            cout << "SEND " << 4322 << " " << 0 << " " << pack.header.connID << " FIN" << endl;
+            cout << "SEND " << 4322 << " " << 0 << " " << pack.header.connID << " ACK FIN" << endl;
             if (sendto(sockfd, sendFin, HEADERSIZE, 0, (struct sockaddr *) &remaddr, sizeof(remaddr)) < 0) {
                cerr << "ERROR: Unable to Send FIN Packet" << endl;
                return 1;
