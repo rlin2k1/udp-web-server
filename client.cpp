@@ -220,8 +220,9 @@ int main(int argc, char *argv[]) //Main Function w/ Arguments from Command Line
    // Begin Transmission of the File!
    // ------------------------------------------------------------------------ //
    bool break_out = false;
+   bool break_out2 = false;
    while (1) {
-      while (current_window + 512 <= CWND) { //If current window size is filled up, we only wait for ACKS
+      while (current_window + 512 <= CWND and !break_out) { //If current window size is filled up, we only wait for ACKS
          send_size = 512;
 
          // Check for Duplicates
@@ -254,9 +255,6 @@ int main(int argc, char *argv[]) //Main Function w/ Arguments from Command Line
          packetSeq = packetSeq + bytesRead;
          current_window = current_window + send_size; //Update current_window
          //}
-      }
-      if(break_out){
-         break;
       }
 
       auto end = chrono::system_clock::now();
@@ -325,12 +323,16 @@ int main(int argc, char *argv[]) //Main Function w/ Arguments from Command Line
                      // Set Next Seq to the Acknowledgement Number of the Server
                      nextSeq = recvPack.header.ack % MAXNUM;
                      nextAck = 0;
-                  } 
+                     if(break_out){
+                        break_out2 = true;
+                        break;
+                     }
+                  }
                   else {
                      cout << "DROP " << recvPack.header.seq % MAXNUM << " " << recvPack.header.ack % MAXNUM << " " << recvPack.header.connID << " " << CWND << " " << SSTHRESH << " ACK" << endl;
                      //duplicate = true;
                   }
-               } 
+               }
                else {
                   cerr << "ERROR: Received Wrong Connection ID: " << recvPack.header.connID << endl;
                   return 1;
@@ -360,6 +362,8 @@ int main(int argc, char *argv[]) //Main Function w/ Arguments from Command Line
             return 3;
          }
       }
+      if(break_out2)
+         break;
    }
    // ------------------------------------------------------------------------ //
    // FIN FLAG - DONE SENDING FILE!
