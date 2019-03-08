@@ -216,3 +216,16 @@ unsigned char* createFin(uint32_t seq, uint16_t connID){
 	memset(&payload, '\0', sizeof(payload));
 	return pack.createPacket(payload, 0);
 }
+
+unsigned char* createFinAck(uint32_t seq, uint32_t ack, uint16_t connID){
+	packet pack;
+	pack.setSeq(seq);
+	pack.setAck(ack);
+	pack.setConnID(connID);
+	pack.setFinFlag();
+   pack.setAckFlag();
+	
+	unsigned char payload[PAYLOADSIZE]; 
+	memset(&payload, '\0', sizeof(payload));
+	return pack.createPacket(payload, 0);
+}
