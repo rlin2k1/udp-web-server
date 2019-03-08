@@ -38,6 +38,7 @@ uint16_t clientID = -1;
 uint32_t nextSeq = -1;
 uint32_t nextAck = -1;
 uint32_t packetSeq = -1;
+uint32_t maxSeq = -1;
 bool duplicate = false;
 
 int main(int argc, char *argv[]) //Main Function w/ Arguments from Command Line
@@ -152,6 +153,7 @@ int main(int argc, char *argv[]) //Main Function w/ Arguments from Command Line
 	int send_size = PAYLOADSIZE; //How Much We Should Send
    auto start = chrono::system_clock::now();
    chrono::duration<double> diff;
+   chrono::duration<double> fin_diff;
 
    // ----------------------------------------------------------------------- //
    // THREE WAY HANDSHAKE!!!
@@ -186,6 +188,7 @@ int main(int argc, char *argv[]) //Main Function w/ Arguments from Command Line
             nextAck = pack.header.seq + 1;
             nextSeq = pack.header.ack;
             packetSeq = nextSeq;
+            maxSeq = nextSeq;
 
             //Create a ACKNOWLEDGEMENT Packet
             unsigned char sendAck[PACKETSIZE] = {0};
@@ -217,7 +220,6 @@ int main(int argc, char *argv[]) //Main Function w/ Arguments from Command Line
 
          // Check for Duplicates
          // TODO: check for dup
-         //if (!duplicate) { //TODO: WHY ! DUPLICATE???
          memset(&payload, '\0', sizeof(payload));
          bytesRead = fread(payload, sizeof(char), send_size, fs);
          // Check for EOF
@@ -237,14 +239,18 @@ int main(int argc, char *argv[]) //Main Function w/ Arguments from Command Line
          unsigned char* hold  = createDataPacket(packetSeq % MAXNUM, nextAck % MAXNUM, clientID, payload, bytesRead);
          memcpy(sendPack, hold, PACKETSIZE);
          
-         std::cout << "SEND " << packetSeq % MAXNUM << " " << 0 << " " << clientID << " " << CWND << " " << SSTHRESH << std::endl;
          if (sendto(sockfd, sendPack, bytesRead + 12, 0, (struct sockaddr *)&serveraddr, sizeof(serveraddr)) < 0) {
             perror("ERROR: Sendto Failed!");
             return 1;
          }
-         packetSeq = packetSeq + bytesRead;
+         packetSeq += bytesRead;
+         if (packetSeq >= maxSeq) {
+            maxSeq += bytesRead;
+            std::cout << "SEND " << packetSeq % MAXNUM << " " << 0 << " " << clientID << " " << CWND << " " << SSTHRESH << std::endl;
+         } else {
+            std::cout << "SEND " << packetSeq % MAXNUM << " " << 0 << " " << clientID << " " << CWND << " " << SSTHRESH << " DUP" << std::endl;
+         }
          current_window = current_window + send_size; //Update current_window
-         //}
       }
       if(break_out){
          break;
@@ -291,9 +297,7 @@ int main(int argc, char *argv[]) //Main Function w/ Arguments from Command Line
                // TODO: Check the ACK Number and Make Sure that it Matches what We Want
                //Check that the Connections are the Same!
                if (recvPack.header.connID == clientID) {
-               //cout << "recvPack.header.ack: " << recvPack.header.ack << ": " << nextSeq + bytesRead << "\n";   
-            //cout << "free space : " << CWND - current_window;
-               if ((recvPack.header.ack % MAXNUM) >= (nextSeq + bytesRead) % MAXNUM) {
+                  if ((recvPack.header.ack % MAXNUM) >= (nextSeq + bytesRead) % MAXNUM) {
                      if(CWND < SSTHRESH){ //Slow Start!
                         CWND = CWND + 512;
                         if(CWND > 51200){
@@ -319,14 +323,12 @@ int main(int argc, char *argv[]) //Main Function w/ Arguments from Command Line
                   } 
                   else {
                      cout << "DROP " << recvPack.header.seq % MAXNUM << " " << recvPack.header.ack % MAXNUM << " " << recvPack.header.connID << " " << CWND << " " << SSTHRESH << " ACK" << endl;
-                     //duplicate = true;
                   }
                } 
                else {
                   cerr << "ERROR: Received Wrong Connection ID: " << recvPack.header.connID << endl;
                   return 1;
                }
-               //usleep(3000);
             }
          }
       }
@@ -392,18 +394,14 @@ int main(int argc, char *argv[]) //Main Function w/ Arguments from Command Line
                socklen_t addrlen = sizeof(remaddr);
 
                // Start Timer
-               clock_t startTime = clock();
-               double secondsPassed;
-               double secondsToDelay = 2.0;
-
+               auto start = chrono::system_clock::now();
                bool flag = true;
                while (flag) {
                   // Check that Two seconds Haven't Passed
-                  secondsPassed = (clock() - startTime) / CLOCKS_PER_SEC;
-                  cerr << secondsPassed << " Seconds have Passed since " << startTime << endl;
-                  cerr << "Clock: " << clock() << " CLOCKS_PER_SEC " << CLOCKS_PER_SEC << endl;
-                  if (secondsPassed >= secondsToDelay) {
-                     cerr << secondsPassed << " Seconds have Passed" << endl;
+                  auto end = chrono::system_clock::now();
+                  fin_diff = end - start;
+                  //cerr << "Time since start: " << fin_diff.count() << endl;
+                  if (fin_diff.count() > 2.0) {
                      flag = false;
                   }
                   // Create a New Packet
