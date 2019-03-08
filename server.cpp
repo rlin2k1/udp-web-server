@@ -246,7 +246,7 @@ int main(int argc, char *argv[]) //Main Function w/ Arguments from Command Line
                cerr << "ERROR: Unable to Send FIN Packet" << endl;
                return 1;
             }
-            cerr << "FILE DONE TRANSMITTING---------------------------------------" << endl;
+            //cerr << "FILE DONE TRANSMITTING---------------------------------------" << endl;
             shut_down[pack.header.connID] = true;
          } else { //There is More Data: Save into File!
             if(is_valid[pack.header.connID] == false)
@@ -280,7 +280,7 @@ int main(int argc, char *argv[]) //Main Function w/ Arguments from Command Line
                   //Update the Expected Sequence Number
                   conn_state[conn] = (pack.header.seq + fileBytesWritten) % MAXNUM;
                   times[conn] = chrono::system_clock::now();
-               } else if (conn_state[conn] % MAXNUM > pack.header.seq % MAXNUM){
+               } else {//if (conn_state[conn] % MAXNUM < pack.header.seq % MAXNUM){
                   //Send an ACK
                   unsigned char sendAck[PACKETSIZE] = {};
                   unsigned char *ack = createAck(4322, conn_state[conn] % MAXNUM, pack.header.connID);
@@ -293,9 +293,9 @@ int main(int argc, char *argv[]) //Main Function w/ Arguments from Command Line
                      return 1;
                   }
 
-               } else {
-                  cerr << (int) pack.header.seq << ":" << conn_state[conn] << "\n";
-               }
+               } //else {
+               //   cerr << (int) pack.header.seq << ":" << conn_state[conn] << "\n";
+               //}
             } else {
                cout << "RECV " << pack.header.seq % MAXNUM << " " << pack.header.ack % MAXNUM << " " << pack.header.connID << " ACK" << endl;
                if(shut_down[pack.header.connID])
