@@ -400,12 +400,26 @@ int main(int argc, char *argv[]) //Main Function w/ Arguments from Command Line
 
          if (bytesRead > 0) {
             packet pack(buf, PACKETSIZE);
-            if (pack.getAckFlag()) {
-               cout << "RECV " << pack.header.seq % MAXNUM << " " << pack.header.ack % MAXNUM << " " << pack.header.connID << " " << CWND << " " << SSTHRESH << " ACK" << endl;
+            if (pack.getAckFlag() && pack.getFinFlag()) {
+               cout << "RECV " << pack.header.seq % MAXNUM << " " << pack.header.ack % MAXNUM << " " << pack.header.connID << " " << CWND << " " << SSTHRESH << " ACK FIN" << endl;
 
                //Get Address from Server Again
-               struct sockaddr_in remaddr;
-               socklen_t addrlen = sizeof(remaddr);
+               //struct sockaddr_in remaddr;
+               //socklen_t addrlen = sizeof(remaddr);
+
+               //Respond with ACK
+               unsigned char sendAck[PACKETSIZE] = {0};
+               uint32_t server_seq = (nextSeq + 1) % MAXNUM; //(nextSeq + 1 > MAXNUM) ? 0 : nextSeq + 1;
+               uint32_t server_ack = (pack.header.seq + 1) % MAXNUM; //(pack.header.seq + 1 > MAXNUM) ? 0 : pack.header.seq + 1;
+               unsigned char* ack = createAck(server_seq, server_ack, clientID);
+               memcpy(sendAck,  ack,  PACKETSIZE);
+
+               //Send the ACK Packet
+               cout << "SEND " << server_seq << " " << server_ack << " " << clientID << " " << CWND << " " << SSTHRESH << " ACK" << endl;
+               if (sendto(sockfd, sendAck, HEADERSIZE, 0, (struct sockaddr *) &serveraddr, sizeof(serveraddr)) < 0) {
+                  perror("ERROR: sendto Failed");
+                  return 0;
+               }
 
                // Start Timer
                auto start = chrono::system_clock::now();
@@ -418,6 +432,8 @@ int main(int argc, char *argv[]) //Main Function w/ Arguments from Command Line
                   if (fin_diff.count() > 2.0) {
                      flag = false;
                   }
+
+                  /*
                   // Create a New Packet
                   unsigned char recvBuf[PACKETSIZE];
 
@@ -430,7 +446,6 @@ int main(int argc, char *argv[]) //Main Function w/ Arguments from Command Line
                      packet pack(recvBuf, PACKETSIZE);
                      if (pack.getFinFlag()) {
                         cout << "RECV " << pack.header.seq % MAXNUM << " " << pack.header.ack % MAXNUM << " " << pack.header.connID << " " << CWND << " " << SSTHRESH << " ACK FIN" << endl;
-                        
                         //Respond with ACK
                         unsigned char sendAck[PACKETSIZE] = {0};
                         uint32_t server_seq = (nextSeq + 1) % MAXNUM; //(nextSeq + 1 > MAXNUM) ? 0 : nextSeq + 1;
@@ -439,13 +454,14 @@ int main(int argc, char *argv[]) //Main Function w/ Arguments from Command Line
                         memcpy(sendAck,  ack,  PACKETSIZE);
 
                         //Send the ACK Packet
-                        cout << "SEND " << server_seq << " " << server_ack << " " << clientID << " " << CWND << " " << SSTHRESH << " ACK" << endl;
+                        cout << "SEND " << server_seq << " " << server_ack << " " << clientID << " " << CWND << " " << SSTHRESH << " ACK 1" << endl;
                         if (sendto(sockfd, sendAck, HEADERSIZE, 0, (struct sockaddr *) &serveraddr, sizeof(serveraddr)) < 0) {
                            perror("ERROR: sendto Failed");
                            return 0;
                         }
-                     }
-                  }
+                     //}
+                  //}
+                  */    
                }
                break;
             }

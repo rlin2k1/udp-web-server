@@ -212,7 +212,7 @@ int main(int argc, char *argv[]) //Main Function w/ Arguments from Command Line
             num_conn++;
          } else if (pack.getFinFlag()) { //Start Shutdown Sequence
             if(is_valid[pack.header.connID] == false)
-               cerr << "ERROR: PACKET CONNECTION ID IS NOT VALID" << endl;
+               cerr << "ERROR: PACKET CONNECTION ID IS NOT VALID 1" << endl;
             cout << "RECV " << pack.header.seq << " " << pack.header.ack << " " << pack.header.connID << " FIN" << endl;
 
             // Create ACKNOWLEDGEMENT Packet to Send Back
@@ -250,7 +250,7 @@ int main(int argc, char *argv[]) //Main Function w/ Arguments from Command Line
             shut_down[pack.header.connID] = true;
          } else { //There is More Data: Save into File!
             if(is_valid[pack.header.connID] == false)
-               cerr << "ERROR: PACKET CONNECTION ID IS NOT VALID" << endl;
+               cerr << "ERROR: PACKET CONNECTION ID IS NOT VALID 1" << endl;
             if (!pack.getAckFlag()) {
                // Packet variables
                int conn = (int) pack.header.connID;
