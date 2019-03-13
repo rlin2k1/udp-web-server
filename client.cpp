@@ -303,7 +303,7 @@ int main(int argc, char *argv[]) //Main Function w/ Arguments from Command Line
                packet recvPack(recvBuf, PACKETSIZE);
                start = chrono::system_clock::now();
 
-               cout << "RECV " << recvPack.header.seq % MAXNUM << " " << recvPack.header.ack % MAXNUM << " " << recvPack.header.connID << " " << CWND << " " << SSTHRESH << " ACK, !!EXPECTED"<< (nextSeq + bytesRead) % MAXNUM << endl ;
+               cout << "RECV " << recvPack.header.seq % MAXNUM << " " << recvPack.header.ack % MAXNUM << " " << recvPack.header.connID << " " << CWND << " " << SSTHRESH << " ACK" << endl;//, !!EXPECTED"<< (nextSeq + bytesRead) % MAXNUM << endl ;
 
                // TODO: Check the ACK Number and Make Sure that it Matches what We Want
                //Check that the Connections are the Same!
