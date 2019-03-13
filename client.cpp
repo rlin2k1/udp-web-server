@@ -299,20 +299,21 @@ int main(int argc, char *argv[]) //Main Function w/ Arguments from Command Line
                packet recvPack(recvBuf, PACKETSIZE);
                start = chrono::system_clock::now();
 
-               cout << "RECV " << recvPack.header.seq % MAXNUM << " " << recvPack.header.ack % MAXNUM << " " << recvPack.header.connID << " " << CWND << " " << SSTHRESH << " ACK" << endl ;
+               cout << "RECV " << recvPack.header.seq % MAXNUM << " " << recvPack.header.ack % MAXNUM << " " << recvPack.header.connID << " " << CWND << " " << SSTHRESH << " ACK, !!EXPECTED"<< (nextSeq + bytesRead) % MAXNUM << endl ;
 
                // TODO: Check the ACK Number and Make Sure that it Matches what We Want
                //Check that the Connections are the Same!
                if (recvPack.header.connID == clientID) {
-                  if (nextSeq + bytesRead > MAXNUM - 1 ){
-                     if ((recvPack.header.ack % MAXNUM) == (nextSeq + bytesRead) % MAXNUM) {
+                  if ((nextSeq + current_window) > MAXNUM - 1 ){ //if overflow
+                     if ((recvPack.header.ack % MAXNUM) >= (nextSeq + bytesRead) % MAXNUM) {
+                        int diff = (recvPack.header.ack % MAXNUM) - ((nextSeq + bytesRead) % MAXNUM);
                         if(CWND < SSTHRESH){ //Slow Start
                            CWND = CWND + 512;
                            if(CWND > 51200){
                               CWND = 51200;
                            }
                            //SEND DATA FROM: AFTER THE LAST ACKNOWLEDGED BYTE TO: THE CONGESTION WINDOW SIZE(CWND). Can be split up to multiple packets.
-                           current_window = current_window - (bytesRead);
+                           current_window = current_window - (bytesRead + diff);
                         }
                         else if(CWND >= SSTHRESH){ //Congestion Avoidance!
                            CWND = CWND + (512 * 512) / CWND;
@@ -320,7 +321,7 @@ int main(int argc, char *argv[]) //Main Function w/ Arguments from Command Line
                               CWND = 51200;
                            }
                            //SEND DATA FROM: AFTER THE LAST ACKNOWLEDGED BYTE TO: THE CONGESTION WINDOW SIZE(CWND). Can be split up to multiple packets.
-                           current_window = current_window - (bytesRead);
+                           current_window = current_window - (bytesRead + diff);
                         }
                         // Set Duplicate to False
                         //duplicate = false;
@@ -333,7 +334,7 @@ int main(int argc, char *argv[]) //Main Function w/ Arguments from Command Line
                         }
                      }
                      else if (recvPack.header.ack % MAXNUM <= 51200){
-                        int diff = (MAXNUM - 1 -(nextSeq + bytesRead)) + (recvPack.header.ack % MAXNUM);
+                        int diff = (MAXNUM -(nextSeq + bytesRead)) + (recvPack.header.ack % MAXNUM);
                         
                         if(CWND < SSTHRESH){ //Slow Start!
                            CWND = CWND + 512;
