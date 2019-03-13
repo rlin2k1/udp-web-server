@@ -256,6 +256,8 @@ int main(int argc, char *argv[]) //Main Function w/ Arguments from Command Line
                int conn = (int) pack.header.connID;
 
                // Check for correct nums
+               cerr << "      PACK.HEADER.SEQ: " << pack.header.seq << endl;
+               cerr << "     CONN_STATE[CONN]: " << conn_state[conn] << endl;
                if (conn_state[conn] % MAXNUM == pack.header.seq % MAXNUM) {
                   cout << "RECV " << pack.header.seq % MAXNUM << " " << pack.header.ack % MAXNUM << " " << pack.header.connID << endl;
                   char test[PAYLOADSIZE];
@@ -287,7 +289,7 @@ int main(int argc, char *argv[]) //Main Function w/ Arguments from Command Line
                   memcpy(sendAck, ack, PACKETSIZE);
 
                   //Send the ACKNOWLEDGEMENT PACKET TO CLIENT
-                  cout << "SEND " << 4322 << " " << conn_state[conn] % MAXNUM << " " << pack.header.connID << " ACK" << endl;
+                  cout << "DROP " << 4322 << " " << pack.header.seq % MAXNUM << " " << pack.header.connID << " ACK" << endl;
                   if (sendto(sockfd, sendAck, HEADERSIZE, 0, (struct sockaddr *) &remaddr, addrlen) < 0) {
                      perror("ERROR: sendto() Failed");
                      return 1;
