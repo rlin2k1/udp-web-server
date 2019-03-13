@@ -261,6 +261,10 @@ int main(int argc, char *argv[]) //Main Function w/ Arguments from Command Line
          }
          packetSeq += bytesRead;
          current_window = current_window + bytesRead; //Update current_window
+         if(bytesRead < 512) {
+            break_out = true;
+            break;
+         }
       }
 
       auto end = chrono::system_clock::now();
