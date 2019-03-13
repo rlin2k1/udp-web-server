@@ -241,7 +241,7 @@ int main(int argc, char *argv[]) //Main Function w/ Arguments from Command Line
             memcpy(sendFin, fin, PACKETSIZE);
 
             // Send the FIN Packet
-            cout << "SEND " << 4322 << " " << 0 << " " << pack.header.connID << " ACK FIN" << endl;
+            cout << "SEND " << 4322 << " " << client_ack << " " << pack.header.connID << " ACK FIN" << endl;
             if (sendto(sockfd, sendFin, HEADERSIZE, 0, (struct sockaddr *) &remaddr, sizeof(remaddr)) < 0) {
                cerr << "ERROR: Unable to Send FIN Packet" << endl;
                return 1;
@@ -256,8 +256,8 @@ int main(int argc, char *argv[]) //Main Function w/ Arguments from Command Line
                int conn = (int) pack.header.connID;
 
                // Check for correct nums
-               cerr << "      PACK.HEADER.SEQ: " << pack.header.seq << endl;
-               cerr << "     CONN_STATE[CONN]: " << conn_state[conn] << endl;
+               //cerr << "      PACK.HEADER.SEQ: " << pack.header.seq << endl;
+               //cerr << "     CONN_STATE[CONN]: " << conn_state[conn] << endl;
                if (conn_state[conn] % MAXNUM == pack.header.seq % MAXNUM) {
                   cout << "RECV " << pack.header.seq % MAXNUM << " " << pack.header.ack % MAXNUM << " " << pack.header.connID << endl;
                   char test[PAYLOADSIZE];
