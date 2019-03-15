@@ -226,7 +226,7 @@ int main(int argc, char *argv[]) //Main Function w/ Arguments from Command Line
    bool break_out2 = false;
    nextAck = 0;
    while (1) {
-      while (current_window < CWND) { //If current window size is filled up, we only wait for ACKS
+      while (current_window + 512 <= CWND) { //If current window size is filled up, we only wait for ACKS
          send_size = 512;
 
          // Check for Duplicates
@@ -265,11 +265,11 @@ int main(int argc, char *argv[]) //Main Function w/ Arguments from Command Line
          //cout << "MAX SEQ: " << maxSeq << endl;
          packetSeq += bytesRead;
          current_window = current_window + bytesRead; //Update current_window
-         // if(bytesRead < 512) {
-         //    break_out = true;
-         //    //packetSeq = packetSeq - bytesRead;
-         //    break;
-         // }
+         if(bytesRead < 512) {
+            break_out = true;
+             //packetSeq = packetSeq - bytesRead;
+            break;
+         }
       }
 
       auto end = chrono::system_clock::now();
