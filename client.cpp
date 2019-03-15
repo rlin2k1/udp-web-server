@@ -29,6 +29,7 @@ Date Created:
 #include <stdlib.h>
 #include <poll.h>
 #include <ctime>
+#include <chrono>
 #include <cstdlib>
 
 using namespace std; //Using the Standard Namespace
@@ -36,6 +37,8 @@ using namespace std; //Using the Standard Namespace
 uint16_t clientID = -1;
 uint32_t nextSeq = -1;
 uint32_t nextAck = -1;
+uint32_t packetSeq = -1;
+uint32_t maxSeq = -1;
 bool duplicate = false;
 
 int main(int argc, char *argv[]) //Main Function w/ Arguments from Command Line
@@ -148,19 +151,32 @@ int main(int argc, char *argv[]) //Main Function w/ Arguments from Command Line
 	int SSTHRESH = 10000; //Slow Start Threshold
 	int current_window = 0; //Current Window Size
 	int send_size = PAYLOADSIZE; //How Much We Should Send
+   chrono::system_clock::time_point start = chrono::system_clock::now();
+   chrono::duration<double> diff;
+   chrono::duration<double> fin_diff;
 
    // ----------------------------------------------------------------------- //
    // THREE WAY HANDSHAKE!!!
    // ----------------------------------------------------------------------- //
-   cerr << "START THREE WAY HANDSHAKE-------------------------------------------" << endl;
+   //cerr << "START THREE WAY HANDSHAKE-------------------------------------------" << endl;
+   int syn_sent = 0;
    while (1) {	
-      cout << "SEND " << 12345 << " " << 0 << " " << 0 << " " << CWND << " " << SSTHRESH << " SYN" << endl;
+      if (syn_sent > 20){
+		  cerr << "ERROR: No response from server" << endl;
+		  return 1;
+	  }
+	  if (syn_sent > 0 ){
+	     cout << "SEND " << 12345 << " " << 0 << " " << 0 << " " << CWND << " " << SSTHRESH << " SYN DUP" << endl;
+	  }
+	  else{
+         cout << "SEND " << 12345 << " " << 0 << " " << 0 << " " << CWND << " " << SSTHRESH << " SYN" << endl;
+	  }
       //Send First HandShake to Server!
       if (sendto(sockfd, sendSyn, HEADERSIZE, 0, (struct sockaddr *)&serveraddr, sizeof(serveraddr)) < 0) {
          perror("ERROR: Sendto Failed!");
          return 0;
       }
-      int result = poll(fds, 1, 15000); //Poll 15 Seconds for Response
+      int result = poll(fds, 1, 500); //Poll 10 Seconds for Response
       if (result < 0) {
          cerr << "ERROR: Unable to Create Poll" << endl;
          return 1;
@@ -176,11 +192,13 @@ int main(int argc, char *argv[]) //Main Function w/ Arguments from Command Line
          if (bytesRead > 0) { //We Got a Packet from the Server. Second HandShake
             packet pack(buf, PACKETSIZE);
             cout << "RECV " << pack.header.seq << " " << pack.header.ack << " " << pack.header.connID << " " << CWND << " " << SSTHRESH << " ACK SYN" << endl;
-
+            start = chrono::system_clock::now();
             // Store Connetion ID into a Global Variable
             clientID = pack.header.connID;
             nextAck = pack.header.seq + 1;
             nextSeq = pack.header.ack;
+            packetSeq = nextSeq;
+            maxSeq = nextSeq;
 
             //Create a ACKNOWLEDGEMENT Packet
             unsigned char sendAck[PACKETSIZE] = {0};
@@ -189,7 +207,7 @@ int main(int argc, char *argv[]) //Main Function w/ Arguments from Command Line
 
             cout << "SEND " << pack.header.ack << " " << pack.header.seq + 1 << " " << pack.header.connID << " " << CWND << " " << SSTHRESH << " ACK" << endl;
             //Respond with ACKNOWLEDGEMENT - Send it Out!
-            if (sendto(sockfd, sendAck, PACKETSIZE, 0, (struct sockaddr *)&serveraddr, sizeof(serveraddr)) < 0) {
+            if (sendto(sockfd, sendAck, HEADERSIZE, 0, (struct sockaddr *)&serveraddr, sizeof(serveraddr)) < 0) {
                perror("ERROR: Sendto Failed!");
                return 0;
             }
@@ -197,22 +215,30 @@ int main(int argc, char *argv[]) //Main Function w/ Arguments from Command Line
          }
       } 
       else {
-         cerr << "ERROR: CONNECTION TIMED OUT!" << endl;
-         return 1;
+         syn_sent  = syn_sent + 1;
       }
    }
-   cerr << "BEGIN TRANSMISSION OF FILE------------------------------------------" << endl;
+   //cerr << "BEGIN TRANSMISSION OF FILE------------------------------------------" << endl;
    // ------------------------------------------------------------------------ //
    // Begin Transmission of the File!
    // ------------------------------------------------------------------------ //
+   bool break_out = false;
+   bool break_out2 = false;
+   nextAck = 0;
    while (1) {
-      // Check for Duplicates
-      if (!duplicate) {
-         bytesRead = fread(payload, sizeof(char), PAYLOADSIZE, fs);
+      while (current_window + 512 <= CWND) { //If current window size is filled up, we only wait for ACKS
+         send_size = 512;
 
+         // Check for Duplicates
+         // TODO: check for dup
+         memset(&payload, '\0', sizeof(payload));
+         bytesRead = fread(payload, sizeof(char), send_size, fs);
+         //cout << "BYTESREAD: " << bytesRead << endl;
          // Check for EOF
-         if (bytesRead == 0) 
+         if (bytesRead == 0) { 
+            break_out = true;
             break;
+         }
          
          //Initialize a New Packet to Send
          char sendPack[PACKETSIZE];
@@ -220,16 +246,38 @@ int main(int argc, char *argv[]) //Main Function w/ Arguments from Command Line
 
          //Set Up a New Packet with PACKET STRUCT
          packet pack;
-         pack.setSeq(nextSeq);
-         pack.setAck(nextAck);
-         unsigned char* hold  = createDataPacket(nextSeq, nextAck, clientID, payload, bytesRead);
+         pack.setSeq(packetSeq % MAXNUM);
+         pack.setAck(nextAck % MAXNUM);
+         unsigned char* hold  = createDataPacket(packetSeq % MAXNUM, nextAck % MAXNUM, clientID, payload, bytesRead);
          memcpy(sendPack, hold, PACKETSIZE);
          
-         std::cout << "SEND " << nextSeq << " " << nextAck << " " << clientID << " " << CWND << " " << SSTHRESH << " ACK" << std::endl;
          if (sendto(sockfd, sendPack, bytesRead + 12, 0, (struct sockaddr *)&serveraddr, sizeof(serveraddr)) < 0) {
             perror("ERROR: Sendto Failed!");
             return 1;
          }
+         if (packetSeq % MAXNUM >= maxSeq) {
+            std::cout << "SEND " << packetSeq % MAXNUM << " " << 0 << " " << clientID << " " << CWND << " " << SSTHRESH << std::endl;
+            maxSeq += bytesRead;
+            maxSeq = maxSeq % MAXNUM;
+         } else {
+            std::cout << "SEND " << packetSeq % MAXNUM << " " << 0 << " " << clientID << " " << CWND << " " << SSTHRESH << " DUP" << std::endl;
+         }
+         //cout << "MAX SEQ: " << maxSeq << endl;
+         packetSeq += bytesRead;
+         current_window = current_window + bytesRead; //Update current_window
+         if(bytesRead < 512) {
+            break_out = true;
+             //packetSeq = packetSeq - bytesRead;
+            break;
+         }
+      }
+
+      auto end = chrono::system_clock::now();
+      diff = end - start;
+      if (diff.count()  > 10.0) {
+         cerr << "ERROR: Client did not receive Packet from the Server for more than 10 Seconds" << endl;
+         close(sockfd);
+         return 3;
       }
 
       //Get Address of Server
@@ -246,72 +294,208 @@ int main(int argc, char *argv[]) //Main Function w/ Arguments from Command Line
          //Check for Any Signs from SERVER
          if (fds[0].revents & POLLIN) {
             //Create a New Packet
-            unsigned char recvBuf[PACKETSIZE];
+            while(true) {
+               unsigned char recvBuf[PACKETSIZE];
 
-            // Get the Received Bytes
-            bytesRecv = recvfrom(sockfd, recvBuf, PACKETSIZE, 0, (struct sockaddr *) &remaddr, &addrlen);
+               // Get the Received Bytes
+               bytesRecv = recvfrom(sockfd, recvBuf, PACKETSIZE, 0, (struct sockaddr *) &remaddr, &addrlen);
 
-            // Check for Error
-            if (bytesRecv < 0) {
-                  cerr << "ERROR: recv() failed" << endl;
-                  close(sockfd);
-                  return 1;
-            }
-
-            //Create a New Packet
-            packet recvPack(recvBuf, PACKETSIZE);
-
-            cout << "RECV " << recvPack.header.seq << " " << recvPack.header.ack << " " << recvPack.header.connID << " " << CWND << " " << SSTHRESH << " ACK" << endl;
-
-            // TODO: Check the ACK Number and Make Sure that it Matches what We Want
-            //Check that the Connections are the Same!
-            if (recvPack.header.connID == clientID) {
-               if (recvPack.header.ack == nextSeq + bytesRead) {
-                  // Set Duplicate to False
-                  duplicate = false;
-
-                  // Set Next Seq to the Acknowledgement Number of the Server
-                  nextSeq = recvPack.header.ack;
-                  nextAck = 0;
-               } 
-               else {
-                  cout << "DROP " << recvPack.header.seq << " " << recvPack.header.ack << " " << recvPack.header.connID << " " << CWND << " " << SSTHRESH << " ACK" << endl;
-                  duplicate = true;
+               // Check for Error
+               if (bytesRecv <= 0) {
+                  break;
                }
-            } 
-            else {
-               cerr << "ERROR: Received Wrong Connection ID: " << recvPack.header.connID << endl;
-               return 1;
+               //Create a New Packet
+               packet recvPack(recvBuf, PACKETSIZE);
+               start = chrono::system_clock::now();
+
+               cout << "RECV " << recvPack.header.seq % MAXNUM << " " << recvPack.header.ack % MAXNUM << " " << recvPack.header.connID << " " << CWND << " " << SSTHRESH << " ACK" << endl;//, !!EXPECTED"<< (nextSeq + bytesRead) % MAXNUM << endl ;
+
+               // TODO: Check the ACK Number and Make Sure that it Matches what We Want
+               //Check that the Connections are the Same!
+               if (recvPack.header.connID == clientID) {
+                  // cout << "OVERFLOW HANDLE: " << (nextSeq + current_window) << endl;
+                  // cout << "INCOMING: " << (recvPack.header.ack) % MAXNUM << endl;
+                  // cout << "Anything Less Than: " << (nextSeq + current_window) % MAXNUM << endl;
+                  // cout << "NEXT SEQ: " << nextSeq << endl;
+                  // cout << "Current Window: " << current_window << endl;
+                  // cout << "PACKET SEQ: " << (packetSeq % MAXNUM) << endl;
+                  //54 Does not Meet First IF Condition
+                  if ((nextSeq + current_window + bytesRead) > MAXNUM - 1) {//If Possibility of Overflow
+                     if ((recvPack.header.ack) % MAXNUM <= (nextSeq + current_window + bytesRead) % MAXNUM) { //If Look Ahead In Our Range -> We Want to Accept ANYTHING IN OUR RANGE
+                        int diff = (recvPack.header.ack % MAXNUM) + MAXNUM - nextSeq;
+                        if(CWND < SSTHRESH){ //Slow Start!
+                           CWND = CWND + 512;
+                           if(CWND > 51200){
+                              CWND = 51200;
+                           }
+                           //SEND DATA FROM: AFTER THE LAST ACKNOWLEDGED BYTE TO: THE CONGESTION WINDOW SIZE(CWND). Can be split up to multiple packets.
+                           current_window = current_window - diff;
+                        }
+                        else if(CWND >= SSTHRESH){ //Congestion Avoidance!
+                           CWND = CWND + (512 * 512) / CWND;
+                           if(CWND > 51200){
+                              CWND = 51200;
+                           }
+                           //SEND DATA FROM: AFTER THE LAST ACKNOWLEDGED BYTE TO: THE CONGESTION WINDOW SIZE(CWND). Can be split up to multiple packets.
+                           current_window = current_window - diff;
+                        }
+                        // Set Duplicate to False
+                        //duplicate = false;
+
+                        // Set Next Seq to the Acknowledgement Number of the Server
+                        nextSeq = recvPack.header.ack % MAXNUM;
+                        nextAck = 0;
+                        if(break_out && ( (packetSeq % MAXNUM) == (recvPack.header.ack) % MAXNUM) ){
+                           break_out2 = true;
+                        }
+                     }
+                     else if((recvPack.header.ack) % MAXNUM > (nextSeq + current_window + bytesRead) % MAXNUM) {
+                        int diff = (recvPack.header.ack % MAXNUM) - ((nextSeq) % MAXNUM);
+                        //DIFF IS WRONG BECAUSE OF OVERFLOW MATH -> LETS HANDLE THAT
+                        // cout << "DIFF: " << diff << endl;
+                        // //cout << "OVERFLOW HANDLE" << endl;
+                        // cout << "INCOMING: " << (recvPack.header.ack) % MAXNUM << endl;
+                        // cout << "Anything Greater Than: " << (nextSeq + bytesRead) % MAXNUM << endl;
+                        // cout << "NEXT SEQ: " << nextSeq << endl;
+                        // cout << "Bytes Read: " << bytesRead << endl;
+                        if(CWND < SSTHRESH){ //Slow Start!
+                           CWND = CWND + 512;
+                           if(CWND > 51200){
+                              CWND = 51200;
+                           }
+                           //SEND DATA FROM: AFTER THE LAST ACKNOWLEDGED BYTE TO: THE CONGESTION WINDOW SIZE(CWND). Can be split up to multiple packets.
+                           current_window = current_window - diff;
+                        }
+                        else if(CWND >= SSTHRESH){ //Congestion Avoidance!
+                           CWND = CWND + (512 * 512) / CWND;
+                           if(CWND > 51200){
+                              CWND = 51200;
+                           }
+                           //SEND DATA FROM: AFTER THE LAST ACKNOWLEDGED BYTE TO: THE CONGESTION WINDOW SIZE(CWND). Can be split up to multiple packets.
+                           current_window = current_window - diff;
+                        }
+                        // Set Duplicate to False
+                        //duplicate = false;
+
+                        // Set Next Seq to the Acknowledgement Number of the Server
+                        nextSeq = recvPack.header.ack % MAXNUM;
+                        nextAck = 0;
+                        if(break_out && ( (packetSeq % MAXNUM) == (recvPack.header.ack) % MAXNUM) ){
+                           break_out2 = true;
+                        }
+                     }
+                     //else {
+                        //cout << "DROP " << recvPack.header.seq % MAXNUM << " " << recvPack.header.ack % MAXNUM << " " << recvPack.header.connID << " " << CWND << " " << SSTHRESH << " ACK" << endl;
+                     //}
+                  }
+                  // cout << "OVERFLOW HANDLE" << endl;
+                  // cout << "INCOMING: " << (recvPack.header.ack) % MAXNUM << endl;
+                  // cout << "Anything Greater Than: " << (nextSeq + bytesRead) % MAXNUM << endl;
+                  // cout << "NEXT SEQ: " << nextSeq << endl;
+                  // cout << "Bytes Read: " << bytesRead << endl;
+                  else if ((recvPack.header.ack % MAXNUM) >= (nextSeq + bytesRead) % MAXNUM) {
+                     int diff = (recvPack.header.ack % MAXNUM) - ((nextSeq) % MAXNUM);
+                     //DIFF IS WRONG BECAUSE OF OVERFLOW MATH -> LETS HANDLE THAT
+                     // cout << "DIFF: " << diff << endl;
+                     // // //cout << "OVERFLOW HANDLE" << endl;
+                     // cout << "INCOMING: " << (recvPack.header.ack) % MAXNUM << endl;
+                     // cout << "Anything Greater Than: " << (nextSeq + bytesRead) % MAXNUM << endl;
+                     // cout << "NEXT SEQ: " << nextSeq << endl;
+                     // cout << "Bytes Read: " << bytesRead << endl;
+                     if(CWND < SSTHRESH){ //Slow Start!
+                        CWND = CWND + 512;
+                        if(CWND > 51200){
+                           CWND = 51200;
+                        }
+                        //SEND DATA FROM: AFTER THE LAST ACKNOWLEDGED BYTE TO: THE CONGESTION WINDOW SIZE(CWND). Can be split up to multiple packets.
+                        current_window = current_window - diff;
+                     }
+                     else if(CWND >= SSTHRESH){ //Congestion Avoidance!
+                        CWND = CWND + (512 * 512) / CWND;
+                        if(CWND > 51200){
+                           CWND = 51200;
+                        }
+                        //SEND DATA FROM: AFTER THE LAST ACKNOWLEDGED BYTE TO: THE CONGESTION WINDOW SIZE(CWND). Can be split up to multiple packets.
+                        current_window = current_window - diff;
+                     }
+                     // Set Duplicate to False
+                     //duplicate = false;
+
+                     // Set Next Seq to the Acknowledgement Number of the Server
+                     nextSeq = recvPack.header.ack % MAXNUM;
+                     nextAck = 0;
+                     if(break_out && ( (packetSeq % MAXNUM) == (recvPack.header.ack) % MAXNUM) ){
+                        break_out2 = true;
+                     }
+                  }
+                  //else {
+                     //cout << "DROP " << recvPack.header.seq % MAXNUM << " " << recvPack.header.ack % MAXNUM << " " << recvPack.header.connID << " " << CWND << " " << SSTHRESH << " ACK" << endl;
+                  //}
+               }
+               else {
+                  cerr << "ERROR: Received Wrong Connection ID: " << recvPack.header.connID << endl;
+                  return 1;
+               }
+               usleep(3000);
             }
          }
       }
       else {
          cerr << "ERROR: ACKNOWLEDGEMENT TIMEOUT" << endl;
 
+         SSTHRESH = CWND/2;
+			CWND = 512;
          //Resend packet
-         fseek(fs, -bytesRead, SEEK_CUR);
+         fseek(fs, -current_window, SEEK_CUR);
+         packetSeq = packetSeq - current_window;
+         current_window = 0;
+
+         break_out2 = false;
+         break_out = false;
 
          //Reset Duplicate
          duplicate = false;
+         auto end = chrono::system_clock::now();
+         diff = end - start;
+         cerr << "Time since start: " << diff.count() << endl;
+         if (diff.count() > 10.0) {
+            cerr << "ERROR: Client did not receive Packet from the Server for more than 10 Seconds" << endl;
+            close(sockfd);
+            return 3;
+         }
       }
+      if(break_out2)
+         break;
    }
+   sleep(1.0);
    // ------------------------------------------------------------------------ //
    // FIN FLAG - DONE SENDING FILE!
    // ------------------------------------------------------------------------ //
    //Create FIN Packet
-   cerr << "BEGIN FIN SHUTDOWN--------------------------------------------------" << endl;
+   //cerr << "BEGIN FIN SHUTDOWN--------------------------------------------------" << endl;
    unsigned char sendFin[PACKETSIZE] = {0};
    unsigned char *fin = createFin(nextSeq, clientID);
    memcpy(sendFin, fin, PACKETSIZE);
 
+   // Get with start
+   auto fin_start = chrono::system_clock::now();
    while (1) {
-      cout << "SEND " << nextSeq << " " << 0 << " " << clientID << " " << CWND << " " << SSTHRESH << " FIN" << endl;
+      // Check for 10 second timeout
+      auto end = chrono::system_clock::now();
+      diff = end - fin_start;
+      if (diff.count() > 10.0) {
+         cerr << "ERROR: Client did not receive Packet from the Server for more than 10 Seconds" << endl;
+         close(sockfd);
+         return 1;
+      }
+
+      cout << "SEND " << nextSeq % MAXNUM << " " << 0 << " " << clientID << " " << CWND << " " << SSTHRESH << " FIN" << endl;
       if (sendto(sockfd, sendFin, HEADERSIZE, 0, (struct sockaddr *) &serveraddr, sizeof(serveraddr)) < 0) {
          cerr << "ERROR: Unable to Send FIN Packet" << endl;
          return 1;
       }
 
-      int result = poll(fds, 1, 10000); //Create a POLL for 10? Seconds
+      int result = poll(fds, 1, 500); //Create a POLL for 10? Seconds
       if (result < 0) {
          cerr << "ERROR: Unable to Create Poll" << endl;
          return 1;
@@ -327,51 +511,33 @@ int main(int argc, char *argv[]) //Main Function w/ Arguments from Command Line
 
          if (bytesRead > 0) {
             packet pack(buf, PACKETSIZE);
-            if (pack.getAckFlag()) {
-               cout << "RECV " << pack.header.seq << " " << pack.header.ack << " " << pack.header.connID << " " << CWND << " " << SSTHRESH << " ACK" << endl;
+            if (pack.getAckFlag() && pack.getFinFlag()) {
+               cout << "RECV " << pack.header.seq % MAXNUM << " " << pack.header.ack % MAXNUM << " " << pack.header.connID << " " << CWND << " " << SSTHRESH << " ACK FIN" << endl;
 
-               //Get Address from Server Again
-               struct sockaddr_in remaddr;
-               socklen_t addrlen = sizeof(remaddr);
+               //Respond with ACK
+               unsigned char sendAck[PACKETSIZE] = {0};
+               uint32_t server_seq = (nextSeq + 1) % MAXNUM; //(nextSeq + 1 > MAXNUM) ? 0 : nextSeq + 1;
+               uint32_t server_ack = (pack.header.seq + 1) % MAXNUM; //(pack.header.seq + 1 > MAXNUM) ? 0 : pack.header.seq + 1;
+               unsigned char* ack = createAck(server_seq, server_ack, clientID);
+               memcpy(sendAck,  ack,  PACKETSIZE);
+
+               //Send the ACK Packet
+               cout << "SEND " << server_seq << " " << server_ack << " " << clientID << " " << CWND << " " << SSTHRESH << " ACK" << endl;
+               if (sendto(sockfd, sendAck, HEADERSIZE, 0, (struct sockaddr *) &serveraddr, sizeof(serveraddr)) < 0) {
+                  perror("ERROR: sendto Failed");
+                  return 0;
+               }
 
                // Start Timer
-               clock_t startTime = clock();
-               double secondsPassed;
-               double secondsToDelay = 2.0;
-
+               auto start = chrono::system_clock::now();
                bool flag = true;
                while (flag) {
                   // Check that Two seconds Haven't Passed
-                  secondsPassed = (clock() - startTime) / CLOCKS_PER_SEC;
-                  if (secondsPassed >= secondsToDelay) {
-                     cerr << secondsPassed << " Seconds have Passed" << endl;
+                  auto end = chrono::system_clock::now();
+                  fin_diff = end - start;
+                  //cerr << "Time since start: " << fin_diff.count() << endl;
+                  if (fin_diff.count() > 2.0) {
                      flag = false;
-                  }
-                  // Create a New Packet
-                  unsigned char recvBuf[PACKETSIZE];
-
-                  // Recv from the Server
-                  bytesRecv = recvfrom(sockfd, recvBuf, PACKETSIZE, 0, (struct sockaddr *) &remaddr, &addrlen);
-
-                  // Check for No Data
-                  if (bytesRecv > 0) {
-                     //Check for FIN from Server
-                     packet pack(recvBuf, PACKETSIZE);
-                     if (pack.getFinFlag()) {
-                        cout << "RECV " << pack.header.seq << " " << pack.header.ack << " " << pack.header.connID << " " << CWND << " " << SSTHRESH << " FIN" << endl;
-                        
-                        //Respond with ACK
-                        unsigned char sendAck[PACKETSIZE] = {0};
-                        unsigned char* ack = createAck(nextSeq + 1, pack.header.seq + 1, clientID);
-                        memcpy(sendAck,  ack,  PACKETSIZE);
-
-                        //Send the ACK Packet
-                        cout << "SEND " << nextSeq + 1 << " " << pack.header.seq + 1 << " " << clientID << " " << CWND << " " << SSTHRESH << " ACK" << endl;
-                        if (sendto(sockfd, sendAck, HEADERSIZE, 0, (struct sockaddr *) &serveraddr, sizeof(serveraddr)) < 0) {
-                           perror("ERROR: sendto Failed");
-                           return 0;
-                        }
-                     }
                   }
                }
                break;
@@ -379,7 +545,7 @@ int main(int argc, char *argv[]) //Main Function w/ Arguments from Command Line
          }
       } 
       else {
-         cerr << "ERROR: Waited for More than 10 Seconds" << endl;
+         cerr << "ERROR: Waited for More than 0.5 Seconds" << endl;
       }
    }
    close(sockfd); //Finally Close the Connection

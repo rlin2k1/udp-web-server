@@ -13,6 +13,7 @@ Date Created:
 #define PACKETSIZE 524
 #define PAYLOADSIZE 512
 #define HEADERSIZE 12
+#define MAXNUM 102401
 
 struct packet_header {
 	uint32_t  seq;
@@ -210,6 +211,19 @@ unsigned char* createFin(uint32_t seq, uint16_t connID){
 	pack.setAck(0);
 	pack.setConnID(connID);
 	pack.setFinFlag();
+	
+	unsigned char payload[PAYLOADSIZE]; 
+	memset(&payload, '\0', sizeof(payload));
+	return pack.createPacket(payload, 0);
+}
+
+unsigned char* createFinAck(uint32_t seq, uint32_t ack, uint16_t connID){
+	packet pack;
+	pack.setSeq(seq);
+	pack.setAck(ack);
+	pack.setConnID(connID);
+	pack.setFinFlag();
+   pack.setAckFlag();
 	
 	unsigned char payload[PAYLOADSIZE]; 
 	memset(&payload, '\0', sizeof(payload));
