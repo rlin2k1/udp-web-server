@@ -18,6 +18,10 @@ If it receives a non FIN or non ACK packet, it starts appending the data receive
 During this process it prints the appropriate error message (such as DROP for incorrect sequence number). If you exit the server through command c, it will close the socket and the server. <br>
 
 ## High Level Design of Client
+The client creates a socket begins by checking for valid command line arguments. It will begin by converting hostname argument into an IP address. Utilizing the translated IP, it will initialize the server address. 
+The client initiates the three way handshake by attempting to send a SYN packet to the created server struct and listening for an ACK packet. It will retransmit another SYN packet with a DUP tag every 0.5s until it times out at 10 seconds. Upon receiving a SYNACK from the server, it will begin transmission. 
+The transmission consists of a while loop that encapsulates one loop that that sends more packets based on the space available and another portion that sends listens for acknowledgements. If there no space available, then it will just simply wait for more acknowledgements to arrive. The listening portion is done by using poll() with a timeout of 0.5s. If it times out, it will resend the same packets with a DUP tag. 
+After it has finished transmitting all the data in the file, it will send a FIN packet. If this packet is not acknowledged, it will send another FIN packet with a DUP tag. This will repeat until it has been acknowledged by the server or times out (10 seconds).  After being acknowledged by the server, the client will close the connection after 2 seconds. During these 2 seconds, the client will drop all incoming packets.
 
 
 ## Problems We Ran Into
