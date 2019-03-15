@@ -324,20 +324,20 @@ int main(int argc, char *argv[]) //Main Function w/ Arguments from Command Line
                      if ((recvPack.header.ack) % MAXNUM <= (nextSeq + current_window + bytesRead) % MAXNUM) { //If Look Ahead In Our Range -> We Want to Accept ANYTHING IN OUR RANGE
                         int diff = (recvPack.header.ack % MAXNUM) + MAXNUM - nextSeq;
                         if(CWND < SSTHRESH){ //Slow Start!
+                           CWND = CWND + 512;
                            if(CWND > 51200){
                               CWND = 51200;
                            }
                            //SEND DATA FROM: AFTER THE LAST ACKNOWLEDGED BYTE TO: THE CONGESTION WINDOW SIZE(CWND). Can be split up to multiple packets.
                            current_window = current_window - diff;
-                           CWND = CWND + 512;
                         }
                         else if(CWND >= SSTHRESH){ //Congestion Avoidance!
+                           CWND = CWND + (512 * 512) / CWND;
                            if(CWND > 51200){
                               CWND = 51200;
                            }
                            //SEND DATA FROM: AFTER THE LAST ACKNOWLEDGED BYTE TO: THE CONGESTION WINDOW SIZE(CWND). Can be split up to multiple packets.
                            current_window = current_window - diff;
-                           CWND = CWND + (512 * 512) / CWND;
                         }
                         // Set Duplicate to False
                         //duplicate = false;
@@ -359,20 +359,20 @@ int main(int argc, char *argv[]) //Main Function w/ Arguments from Command Line
                         // cout << "NEXT SEQ: " << nextSeq << endl;
                         // cout << "Bytes Read: " << bytesRead << endl;
                         if(CWND < SSTHRESH){ //Slow Start!
+                           CWND = CWND + 512;
                            if(CWND > 51200){
                               CWND = 51200;
                            }
                            //SEND DATA FROM: AFTER THE LAST ACKNOWLEDGED BYTE TO: THE CONGESTION WINDOW SIZE(CWND). Can be split up to multiple packets.
                            current_window = current_window - diff;
-                           CWND = CWND + 512;
                         }
                         else if(CWND >= SSTHRESH){ //Congestion Avoidance!
+                           CWND = CWND + (512 * 512) / CWND;
                            if(CWND > 51200){
                               CWND = 51200;
                            }
                            //SEND DATA FROM: AFTER THE LAST ACKNOWLEDGED BYTE TO: THE CONGESTION WINDOW SIZE(CWND). Can be split up to multiple packets.
                            current_window = current_window - diff;
-                           CWND = CWND + (512 * 512) / CWND;
                         }
                         // Set Duplicate to False
                         //duplicate = false;
@@ -403,20 +403,20 @@ int main(int argc, char *argv[]) //Main Function w/ Arguments from Command Line
                      // cout << "NEXT SEQ: " << nextSeq << endl;
                      // cout << "Bytes Read: " << bytesRead << endl;
                      if(CWND < SSTHRESH){ //Slow Start!
+                        CWND = CWND + 512;
                         if(CWND > 51200){
                            CWND = 51200;
                         }
                         //SEND DATA FROM: AFTER THE LAST ACKNOWLEDGED BYTE TO: THE CONGESTION WINDOW SIZE(CWND). Can be split up to multiple packets.
                         current_window = current_window - diff;
-                        CWND = CWND + 512;
                      }
                      else if(CWND >= SSTHRESH){ //Congestion Avoidance!
+                        CWND = CWND + (512 * 512) / CWND;
                         if(CWND > 51200){
                            CWND = 51200;
                         }
                         //SEND DATA FROM: AFTER THE LAST ACKNOWLEDGED BYTE TO: THE CONGESTION WINDOW SIZE(CWND). Can be split up to multiple packets.
                         current_window = current_window - diff;
-                        CWND = CWND + (512 * 512) / CWND;
                      }
                      // Set Duplicate to False
                      //duplicate = false;
@@ -446,8 +446,8 @@ int main(int argc, char *argv[]) //Main Function w/ Arguments from Command Line
          SSTHRESH = CWND/2;
 			CWND = 512;
          //Resend packet
-         fseek(fs, -current_window, SEEK_CUR);
-         packetSeq = packetSeq - current_window;
+         fseek(fs, -current_window + 512, SEEK_CUR);
+         packetSeq = packetSeq - current_window + 512;
          current_window = 512;
 
          break_out2 = false;
