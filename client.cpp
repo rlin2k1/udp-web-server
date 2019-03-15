@@ -149,7 +149,7 @@ int main(int argc, char *argv[]) //Main Function w/ Arguments from Command Line
    // ----------------------------------------------------------------------- //
    int CWND = 512; //Congestion Window Size
 	int SSTHRESH = 10000; //Slow Start Threshold
-	int current_window = 512; //Current Window Size
+	int current_window = 0; //Current Window Size
 	int send_size = PAYLOADSIZE; //How Much We Should Send
    chrono::system_clock::time_point start = chrono::system_clock::now();
    chrono::duration<double> diff;
@@ -226,7 +226,7 @@ int main(int argc, char *argv[]) //Main Function w/ Arguments from Command Line
    bool break_out2 = false;
    nextAck = 0;
    while (1) {
-      while (current_window <= CWND) { //If current window size is filled up, we only wait for ACKS
+      while (current_window < CWND) { //If current window size is filled up, we only wait for ACKS
          send_size = 512;
 
          // Check for Duplicates
@@ -446,9 +446,9 @@ int main(int argc, char *argv[]) //Main Function w/ Arguments from Command Line
          SSTHRESH = CWND/2;
 			CWND = 512;
          //Resend packet
-         fseek(fs, -current_window + 512, SEEK_CUR);
-         packetSeq = packetSeq - current_window + 512;
-         current_window = 512;
+         fseek(fs, -current_window, SEEK_CUR);
+         packetSeq = packetSeq - current_window;
+         current_window = 0;
 
          break_out2 = false;
          break_out = false;
