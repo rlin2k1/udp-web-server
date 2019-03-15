@@ -149,7 +149,7 @@ int main(int argc, char *argv[]) //Main Function w/ Arguments from Command Line
    // ----------------------------------------------------------------------- //
    int CWND = 512; //Congestion Window Size
 	int SSTHRESH = 10000; //Slow Start Threshold
-	int current_window = 0; //Current Window Size
+	int current_window = 512; //Current Window Size
 	int send_size = PAYLOADSIZE; //How Much We Should Send
    chrono::system_clock::time_point start = chrono::system_clock::now();
    chrono::duration<double> diff;
@@ -384,9 +384,9 @@ int main(int argc, char *argv[]) //Main Function w/ Arguments from Command Line
                            break_out2 = true;
                         }
                      }
-                     else {
-                        cout << "DROP " << recvPack.header.seq % MAXNUM << " " << recvPack.header.ack % MAXNUM << " " << recvPack.header.connID << " " << CWND << " " << SSTHRESH << " ACK" << endl;
-                     }
+                     //else {
+                        //cout << "DROP " << recvPack.header.seq % MAXNUM << " " << recvPack.header.ack % MAXNUM << " " << recvPack.header.connID << " " << CWND << " " << SSTHRESH << " ACK" << endl;
+                     //}
                   }
                   // cout << "OVERFLOW HANDLE" << endl;
                   // cout << "INCOMING: " << (recvPack.header.ack) % MAXNUM << endl;
@@ -428,9 +428,9 @@ int main(int argc, char *argv[]) //Main Function w/ Arguments from Command Line
                         break_out2 = true;
                      }
                   }
-                  else {
-                     cout << "DROP " << recvPack.header.seq % MAXNUM << " " << recvPack.header.ack % MAXNUM << " " << recvPack.header.connID << " " << CWND << " " << SSTHRESH << " ACK" << endl;
-                  }
+                  //else {
+                     //cout << "DROP " << recvPack.header.seq % MAXNUM << " " << recvPack.header.ack % MAXNUM << " " << recvPack.header.connID << " " << CWND << " " << SSTHRESH << " ACK" << endl;
+                  //}
                }
                else {
                   cerr << "ERROR: Received Wrong Connection ID: " << recvPack.header.connID << endl;
@@ -477,14 +477,25 @@ int main(int argc, char *argv[]) //Main Function w/ Arguments from Command Line
    unsigned char *fin = createFin(nextSeq, clientID);
    memcpy(sendFin, fin, PACKETSIZE);
 
+   // Get with start
+   auto fin_start = chrono::system_clock::now();
    while (1) {
+      // Check for 10 second timeout
+      auto end = chrono::system_clock::now();
+      diff = end - fin_start;
+      if (diff.count() > 10.0) {
+         cerr << "ERROR: Client did not receive Packet from the Server for more than 10 Seconds" << endl;
+         close(sockfd);
+         return 1;
+      }
+
       cout << "SEND " << nextSeq % MAXNUM << " " << 0 << " " << clientID << " " << CWND << " " << SSTHRESH << " FIN" << endl;
       if (sendto(sockfd, sendFin, HEADERSIZE, 0, (struct sockaddr *) &serveraddr, sizeof(serveraddr)) < 0) {
          cerr << "ERROR: Unable to Send FIN Packet" << endl;
          return 1;
       }
 
-      int result = poll(fds, 1, 10000); //Create a POLL for 10? Seconds
+      int result = poll(fds, 1, 500); //Create a POLL for 10? Seconds
       if (result < 0) {
          cerr << "ERROR: Unable to Create Poll" << endl;
          return 1;
@@ -502,10 +513,6 @@ int main(int argc, char *argv[]) //Main Function w/ Arguments from Command Line
             packet pack(buf, PACKETSIZE);
             if (pack.getAckFlag() && pack.getFinFlag()) {
                cout << "RECV " << pack.header.seq % MAXNUM << " " << pack.header.ack % MAXNUM << " " << pack.header.connID << " " << CWND << " " << SSTHRESH << " ACK FIN" << endl;
-
-               //Get Address from Server Again
-               //struct sockaddr_in remaddr;
-               //socklen_t addrlen = sizeof(remaddr);
 
                //Respond with ACK
                unsigned char sendAck[PACKETSIZE] = {0};
@@ -532,43 +539,13 @@ int main(int argc, char *argv[]) //Main Function w/ Arguments from Command Line
                   if (fin_diff.count() > 2.0) {
                      flag = false;
                   }
-
-                  /*
-                  // Create a New Packet
-                  unsigned char recvBuf[PACKETSIZE];
-
-                  // Recv from the Server
-                  bytesRecv = recvfrom(sockfd, recvBuf, PACKETSIZE, 0, (struct sockaddr *) &remaddr, &addrlen);
-
-                  // Check for No Data
-                  if (bytesRecv > 0) {
-                     //Check for FIN from Server
-                     packet pack(recvBuf, PACKETSIZE);
-                     if (pack.getFinFlag()) {
-                        cout << "RECV " << pack.header.seq % MAXNUM << " " << pack.header.ack % MAXNUM << " " << pack.header.connID << " " << CWND << " " << SSTHRESH << " ACK FIN" << endl;
-                        //Respond with ACK
-                        unsigned char sendAck[PACKETSIZE] = {0};
-                        uint32_t server_seq = (nextSeq + 1) % MAXNUM; //(nextSeq + 1 > MAXNUM) ? 0 : nextSeq + 1;
-                        uint32_t server_ack = (pack.header.seq + 1) % MAXNUM; //(pack.header.seq + 1 > MAXNUM) ? 0 : pack.header.seq + 1;
-                        unsigned char* ack = createAck(server_seq, server_ack, clientID);
-                        memcpy(sendAck,  ack,  PACKETSIZE);
-
-                        //Send the ACK Packet
-                        cout << "SEND " << server_seq << " " << server_ack << " " << clientID << " " << CWND << " " << SSTHRESH << " ACK 1" << endl;
-                        if (sendto(sockfd, sendAck, HEADERSIZE, 0, (struct sockaddr *) &serveraddr, sizeof(serveraddr)) < 0) {
-                           perror("ERROR: sendto Failed");
-                           return 0;
-                        }
-                     //}
-                  //}
-                  */    
                }
                break;
             }
          }
       } 
       else {
-         cerr << "ERROR: Waited for More than 10 Seconds" << endl;
+         cerr << "ERROR: Waited for More than 0.5 Seconds" << endl;
       }
    }
    close(sockfd); //Finally Close the Connection
