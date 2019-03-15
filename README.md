@@ -2,7 +2,7 @@
 Group Members and UCLA IDs: Roy Lin(UCLA ID: 704-767-891), Julien Collins(UCLA ID: 804-745-115), Grand Huynh(UCLA ID: 404-814-243)<br>
 
 ## Contributions of Each Team Member
-Julien: <br>
+Julien: My role was to write the FIN shutdown part of the client, as well as to implement initial reliable transmission. I was also responsible for writing the FIN response on the server side. I implemented most of the timers and worked on debugging SEQ and ACK numbers. I wrote a big portion of the server logic in general, including the couts. Finally, worked on the debugging aspect of the project, which comprised a large portion of the work. <br>
 <br>
 Grand: My role was to create the header file and associated helper functions. I wrote the skeleton including command line parsing. I also implemented the three way handshake including retransmitts. Like everyone else, I participated in the debugging sessions that made up a large part of the workload. <br>
 <br>
