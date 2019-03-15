@@ -448,7 +448,7 @@ int main(int argc, char *argv[]) //Main Function w/ Arguments from Command Line
          //Resend packet
          fseek(fs, -current_window, SEEK_CUR);
          packetSeq = packetSeq - current_window;
-         current_window = 0;
+         current_window = 512;
 
          break_out2 = false;
          break_out = false;
