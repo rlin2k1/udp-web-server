@@ -19,7 +19,21 @@ During this process it prints the appropriate error message (such as DROP for in
 
 ## High Level Design of Client
 
+
 ## Problems We Ran Into
+This CS 118 Project 2 was an extension of the CS 118 Project 1 that we had earlier in the quarter in Winter of 2019 - creating Clients and Servers to connect to each other through Socket Connection. We had a lot of issues in the beginning. For one, when we were first creating our own PACKET Class to use in Updating ACKS, SEQ Numbers, and Setting Flags. We had issues on the byte ordering when we sent from our Client and how our Server received it. We didn't know that we were supposed to use Little Endian for Host and Big Endian for Over the Network. We solved this issue by talking with TA Seungbae Kim and he taught us to use htons() and ntons() to convert back and forth.<br>
+
+Our biggest problem when doing this project was the math in calculated updated ACKS and SEQ Numbers when Overflow would occur. The problem got really bad when we sent a SEQ number and sent out more Packets up to the size of our Congestion Window Size. Our expected ACK number was not Overflowed, but one of our incoming ACKNOWLEDGEMENTS have overflowed and our math gets messed up. We fixed this error by examing all the variables using GDB and just writing our the scenario on paper and doing Packet Analysis on them. Eventually, we derived rules to account for Overlows past the Expected ACK number that we were supposed to get.<br>
+
+We had a lot of formatted issues as well - DROP when we shouldn't have DROP. Or DUP when we shouldn't have DUP. We fixed these issues by seeing the conditions at where we printed these statements and made sure that we did not/did print when certain conditions were met.<br>
+
+We ran into issues on Poll not timing out - or timing out and not writing an error message into the specified file. I solved this issue by looking in the MAN Section of the Unix Terminal to see the Poll() Specification.<br>
+
+We also ran into problems for our 10 Second Timeouts on Client and Server - where we put 10.0 Seconds, but the Client and Server would take longer than 10 Seconds each to timeout. We solved this issue by figuring out that Clock() from the Ctime Library only counted Clock cycles from the computer so we switched to Chrono's System Clock() to count actual human time. <br>
+
+We also had an issue when the Client would not work for Files under 512 Bytes since the Client would be stuck in an infinite loop waiting for acknowledgements and not break out since the Client thinks there still needs more bytes to be sent. We fixed this by having a flag signaling that the file was done and that we should break out RIGHT when we received the ACKNOWLEDGEMENT. <br>
+
+Although We ran into a lot of problems, these were common pitfalls when working with network operations. Many of the problems were met by other people on Google and the solutions to problems could readily be found online. Most of our fixed issues can also be seen in the Git Log.<br>
 
 ## List of Additional Libraries Used
 We had quite a bit of included libraries:<br>
