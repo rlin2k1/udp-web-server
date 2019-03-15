@@ -224,6 +224,7 @@ int main(int argc, char *argv[]) //Main Function w/ Arguments from Command Line
    // ------------------------------------------------------------------------ //
    bool break_out = false;
    bool break_out2 = false;
+   nextAck = 0;
    while (1) {
       while (current_window + 512 <= CWND and !break_out) { //If current window size is filled up, we only wait for ACKS
          send_size = 512;
