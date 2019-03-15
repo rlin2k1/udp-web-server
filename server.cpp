@@ -49,7 +49,7 @@ int num_conn = 1;
 uint32_t conn_state[MAXCLIENTS];
 FILE *files[MAXCLIENTS];
 //chrono::system_clock::time_point times[MAXCLIENTS];
-//bool is_valid[MAXCLIENTS] = {false};
+bool file_closed[MAXCLIENTS] = {false};
 //bool shut_down[MAXCLIENTS] = {false};
 
 string file_directory = "";
@@ -202,7 +202,7 @@ int main(int argc, char *argv[]) //Main Function w/ Arguments from Command Line
             //times[num_conn] = chrono::system_clock::now();
             FILE *fs = fopen(file_path.c_str(), "wb"); //Open the File for Modification
             files[num_conn] = fs;
-            //is_valid[num_conn] = true;
+            file_closed[num_conn] = false;
             if (!files[num_conn]) {
                cerr << "ERROR: Could Not Open File" << endl;
                return 1;
@@ -232,7 +232,10 @@ int main(int argc, char *argv[]) //Main Function w/ Arguments from Command Line
 
             // Close File Descriptor
             int conn = (int)pack.header.connID;
-            fclose(files[conn]);
+            if (!file_closed[conn]) {
+               fclose(files[conn]);
+               file_closed[conn] = true;
+            }
 
             // ALso Create FIN?
             unsigned char sendFin[PACKETSIZE] = {0};
