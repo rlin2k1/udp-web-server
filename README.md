@@ -3,8 +3,11 @@ Group Members and UCLA IDs: Roy Lin(UCLA ID: 704-767-891), Julien Collins(UCLA I
 
 ## Contributions of Each Team Member
 Julien: <br>
+<br>
 Grand: My role was to create the header file and associated helper functions. I wrote the skeleton including command line parsing. I also implemented the three way handshake including retransmitts. Like everyone else, I participated in the debugging sessions that made up a large part of the workload. <br>
+<br>
 Roy: My role was dealing with the Congestion Avoidance section in the client.cpp file. I wrote the rules on updating the Congestion Window size, and making sure that client sends up to CWND bytes of data. And, after each ACK is received, I either go into Slow Start or Congestion Avoidance Mode. Depending on Timeouts, I update the Slow Start Threshold the the Congestion Window Size. Fixed Bugs in Overflow Issues and SEQ/ACK Numbers differing from what they should be in the Reference Clients and Servers. <br>
+<br>
 Contributions can be seen in the Git Log. <br>
 
 ## High Level Design of Server
