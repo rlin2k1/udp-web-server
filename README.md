@@ -1,12 +1,8 @@
-# CS118 Project 2
-Group Members and UCLA IDs: Roy Lin(UCLA ID: 704-767-891), Julien Collins(UCLA ID: 804-745-115), Grand Huynh(UCLA ID: 404-814-243)<br>
+# UDP Web Server
+By: Roy Lin
 
-## Contributions of Each Team Member
-Julien: My role was to write the FIN shutdown part of the client, as well as to implement initial reliable transmission. I was also responsible for writing the FIN response on the server side. I implemented most of the timers and worked on debugging SEQ and ACK numbers. I wrote a big portion of the server logic in general, including the couts. Finally, worked on the debugging aspect of the project, which comprised a large portion of the work. <br>
-<br>
-Grand: My role was to create the header file and associated helper functions. I wrote the skeleton including command line parsing. I also implemented the three way handshake including retransmitts. Like everyone else, I participated in the debugging sessions that made up a large part of the workload. <br>
-<br>
-Roy: My role was dealing with the Congestion Avoidance section in the client.cpp file. I wrote the rules on updating the Congestion Window size, and making sure that client sends up to CWND bytes of data. And, after each ACK is received, I either go into Slow Start or Congestion Avoidance Mode. Depending on Timeouts, I update the Slow Start Threshold the the Congestion Window Size. Fixed Bugs in Overflow Issues and SEQ/ACK Numbers differing from what they should be in the Reference Clients and Servers. <br>
+## Contribution
+My role was dealing with the Congestion Avoidance section in the client.cpp file. I wrote the rules on updating the Congestion Window size, and making sure that client sends up to CWND bytes of data. And, after each ACK is received, I either go into Slow Start or Congestion Avoidance Mode. Depending on Timeouts, I update the Slow Start Threshold the the Congestion Window Size. Fixed Bugs in Overflow Issues and SEQ/ACK Numbers differing from what they should be in the Reference Clients and Servers. <br>
 <br>
 Contributions can be seen in the Git Log. <br>
 
@@ -25,7 +21,7 @@ After it has finished transmitting all the data in the file, it will send a FIN 
 
 
 ## Problems We Ran Into
-This CS 118 Project 2 was an extension of the CS 118 Project 1 that we had earlier in the quarter in Winter of 2019 - creating Clients and Servers to connect to each other through Socket Connection. We had a lot of issues in the beginning. For one, when we were first creating our own PACKET Class to use in Updating ACKS, SEQ Numbers, and Setting Flags. We had issues on the byte ordering when we sent from our Client and how our Server received it. We didn't know that we were supposed to use Little Endian for Host and Big Endian for Over the Network. We solved this issue by talking with TA Seungbae Kim and he taught us to use htons() and ntons() to convert back and forth.<br>
+This project creates Clients and Servers to connect to each other through Socket Connection. We had a lot of issues in the beginning. For one, when we were first creating our own PACKET Class to use in Updating ACKS, SEQ Numbers, and Setting Flags. We had issues on the byte ordering when we sent from our Client and how our Server received it. We didn't know that we were supposed to use Little Endian for Host and Big Endian for Over the Network. We solved this issue by talking with TA Seungbae Kim and he taught us to use htons() and ntons() to convert back and forth.<br>
 
 Our biggest problem when doing this project was the math in calculated updated ACKS and SEQ Numbers when Overflow would occur. The problem got really bad when we sent a SEQ number and sent out more Packets up to the size of our Congestion Window Size. Our expected ACK number was not Overflowed, but one of our incoming ACKNOWLEDGEMENTS have overflowed and our math gets messed up. We fixed this error by examing all the variables using GDB and just writing our the scenario on paper and doing Packet Analysis on them. Eventually, we derived rules to account for Overlows past the Expected ACK number that we were supposed to get.<br>
 
